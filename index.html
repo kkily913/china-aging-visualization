@@ -1,0 +1,575 @@
+﻿<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>解码老龄社会———老龄社会全景透视与社会应对</title>
+    <script type="text/javascript" src="js/jquery.js"></script>
+    <script type="text/javascript" src="js/echarts.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/comon0.css">
+    <style>
+        /* 页面加载进场动画 */
+        body {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+
+        /* --- 顶部导航栏样式 --- */
+        .top-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50px;
+            background: rgba(0, 150, 255, 0.15);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .top-nav a {
+            color: rgba(255, 255, 255, 0.9);
+            text-decoration: none;
+            padding: 0 20px;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            transition: all 0.2s;
+            font-size: 15px;
+            letter-spacing: 1px;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        .top-nav a:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .top-nav a.active {
+            color: #fff;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.5);
+            font-weight: 500;
+        }
+
+        /* 调整内容位置，避免被导航栏遮挡 */
+        .head {
+            margin-top: 50px;
+        }
+
+        /* AI悬浮球样式 - 移动到左上角 */
+        .ai-float-ball {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            z-index: 2001;
+            transition: all 0.3s ease;
+        }
+
+        .ai-float-ball:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 25px rgba(0,0,0,0.3);
+        }
+
+        .ai-float-ball i {
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+
+        /* AI聊天窗口样式(科技感毛玻璃) */
+        .ai-chat-container {
+            position: fixed;
+            top: 70px;
+            left: 20px;
+            width: 400px;
+            height: 500px;
+            background: rgba(11, 26, 74, 0.75);
+            backdrop-filter: blur(15px);
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6), inset 0 0 20px rgba(0, 246, 255, 0.1);
+            z-index: 2000;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid rgba(0, 246, 255, 0.3);
+            resize: both;
+            min-width: 350px;
+            min-height: 400px;
+            animation: slideInLeft 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+
+        @keyframes slideInLeft {
+            from { opacity: 0; transform: translateX(-50px) scale(0.95); }
+            to { opacity: 1; transform: translateX(0) scale(1); }
+        }
+
+        .ai-chat-header {
+            background: linear-gradient(90deg, rgba(0, 86, 179, 0.8), rgba(0, 246, 255, 0.3));
+            color: white;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: move;
+            user-select: none;
+            border-bottom: 1px solid rgba(0, 246, 255, 0.3);
+        }
+        .ai-chat-header h3 { margin: 0; font-size: 16px; font-weight: bold; letter-spacing: 1px; }
+
+        .chat-controls { display: flex; align-items: center; }
+        .resize-handle {
+            width: 15px; height: 15px; cursor: nw-resize;
+            background: linear-gradient(135deg, transparent 50%, #00f6ff 50%);
+            margin-left: 10px;
+        }
+        .close-chat, .minimize-chat {
+            background: none; border: none; color: white;
+            font-size: 20px; cursor: pointer; margin-left: 10px; transition: color 0.2s;
+        }
+        .close-chat:hover, .minimize-chat:hover { color: #00f6ff; }
+
+        .ai-chat-messages {
+            flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;
+        }
+        .message {
+            max-width: 80%; padding: 10px 15px; border-radius: 15px; font-size: 14px; line-height: 1.5; word-wrap: break-word; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+        .user-message {
+            align-self: flex-end;
+            background: linear-gradient(90deg, #0056b3, #00f6ff);
+            color: white; border-bottom-right-radius: 2px;
+        }
+        .ai-message {
+            align-self: flex-start;
+            background: rgba(255, 255, 255, 0.1);
+            color: #e0e0e0;
+            border: 1px solid rgba(0, 246, 255, 0.2);
+            border-bottom-left-radius: 2px;
+        }
+
+        .ai-chat-input {
+            display: flex; padding: 15px; border-top: 1px solid rgba(0, 246, 255, 0.2); background: rgba(0,0,0,0.3);
+        }
+        .ai-chat-input input {
+            flex: 1; padding: 10px 15px; border: 1px solid rgba(0, 246, 255, 0.3);
+            border-radius: 20px; outline: none; background: rgba(0, 0, 0, 0.5); color: #fff; transition: all 0.2s;
+        }
+        .ai-chat-input input:focus { border-color: #00f6ff; box-shadow: 0 0 10px rgba(0, 246, 255, 0.3); }
+        .ai-chat-input button {
+            margin-left: 10px; padding: 10px 20px; background: linear-gradient(90deg, #0056b3, #00f6ff);
+            color: white; border: none; border-radius: 20px; cursor: pointer; transition: all 0.2s; font-weight: bold;
+        }
+        .ai-chat-input button:hover { box-shadow: 0 0 15px #00f6ff; transform: scale(1.05); }
+
+        .typing-indicator {
+            display: none; align-self: flex-start; background: transparent; padding: 5px 15px;
+            font-size: 13px; color: #00f6ff; font-style: italic; animation: blink 1s infinite;
+        }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+        .ai-chat-container.minimized { height: 50px; width: 220px; overflow: hidden; }
+        .ai-chat-container.minimized .ai-chat-messages,
+        .ai-chat-container.minimized .ai-chat-input,
+        .ai-chat-container.minimized .typing-indicator { display: none; }
+
+        @media (max-width: 768px) {
+            .ai-chat-container { width: 90%; height: 60%; left: 5%; right: 5%; top: 10%; }
+            .ai-float-ball { top: 15px; left: 15px; }
+        }
+    </style>
+    <script>
+        $(document).ready(function(){
+            // 优化：不等待 window.load，DOM准备好后稍等立即隐藏loading，加快进入页面视觉速度
+            setTimeout(function() { $(".loading").fadeOut(200); }, 100);
+
+            var whei=$(window).width()
+            $("html").css({fontSize:whei/20})
+            $(window).resize(function(){
+                var whei=$(window).width()
+                $("html").css({fontSize:whei/20})
+            });
+        });
+    </script>
+</head>
+
+<body>
+<div class="canvas" style="opacity: .2">
+    <!-- 优化：延迟加载极度消耗性能的iframe -->
+    <iframe frameborder="0" id="bg-iframe" src="about:blank" data-src="js/index.html" style="width: 100%; height: 100%"></iframe>
+</div>
+<div class="loading">
+    <div class="loadbox"> <img src="picture/loading.gif"> 页面加载中... </div>
+</div>
+
+<!-- AI悬浮球 - 左上角 -->
+<div class="ai-float-ball" id="aiFloatBall">
+    <i>AI</i>
+</div>
+
+<!-- 顶部导航栏 - 已删除省份详情链接 -->
+<div class="top-nav">
+    <a href="index.html" class="active">首页概览</a>
+    <a href="population_prediction.html">人口预测</a>
+</div>
+
+<div class="head">
+    <h1><a href="https://gitee.com/iGaoWei/big-data-view" style="color: white; text-shadow: 0 0 15px #00f6ff; text-decoration: none;">中国人口老龄化可视化分析</a></h1>
+    <div class="weather"><span id="showTime"></span></div>
+    <script>
+        var t = null;
+        t = setTimeout(time,1000);
+        function time() {
+            clearTimeout(t);
+            dt = new Date();
+            var y=dt.getFullYear(), mt=dt.getMonth()+1, day=dt.getDate(), h=dt.getHours(), m=dt.getMinutes(), s=dt.getSeconds();
+            document.getElementById("showTime").innerHTML = y+"年"+mt+"月"+day+"日 "+h+"时"+m+"分"+s+"秒";
+            t = setTimeout(time,1000);
+        }
+    </script>
+</div>
+
+<!-- AI聊天窗口 -->
+<div class="ai-chat-container" id="aiChatContainer">
+    <div class="ai-chat-header" id="chatHeader">
+        <h3>🤖 智能AI助手</h3>
+        <div class="chat-controls">
+            <button class="minimize-chat" id="minimizeChat">−</button>
+            <button class="close-chat" id="closeChat">×</button>
+            <div class="resize-handle" id="resizeHandle"></div>
+        </div>
+    </div>
+    <div class="ai-chat-messages" id="chatMessages">
+        <div class="message ai-message">您好！我是大模型智能助手，可以为您深度解答关于中国人口老龄化趋势、数据分析以及智慧养老政策等相关问题。请问有什么可以帮您的？</div>
+    </div>
+    <div class="typing-indicator" id="typingIndicator">AI 正在深度思考中...</div>
+    <div class="ai-chat-input">
+        <input type="text" id="userInput" placeholder="输入您关注的老龄化问题...">
+        <button id="sendMessage">发送</button>
+    </div>
+</div>
+
+<div class="mainbox">
+    <ul class="clearfix">
+        <li>
+            <div class="boxall" style="height: 2.8rem">
+                <div class="alltitle">出生率与死亡率</div>
+                <div class="allnav" id="echart1"></div>
+                <div class="boxfoot"></div>
+            </div>
+            <div class="boxall" style="height: 2.8rem">
+                <div class="alltitle">城乡医疗资源对比</div>
+                <div class="allnav" id="echart2"></div>
+                <div class="boxfoot"></div>
+            </div>
+            <div class="boxall" style="height: 3.4rem">
+                <div style="height:100%; width: 100%;">
+                    <div class="sy" id="fb1"></div>
+                    <div class="sy" id="fb2"></div>
+                    <div class="sy" id="fb3"></div>
+                </div>
+                <div class="boxfoot"></div>
+            </div>
+        </li>
+        <li>
+            <div class="bar">
+                <div class="barbox">
+                    <ul class="clearfix">
+                        <li class="pulll_left counter">140489</li>
+                        <li class="pulll_left counter">32338</li>
+                    </ul>
+                </div>
+                <div class="barbox2">
+                    <ul class="clearfix">
+                        <li class="pulll_left">2025年全国总人口(万人) </li>
+                        <li class="pulll_left">全国60周岁及以上人口(万人)</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="map">
+                <div class="map1"><img src="picture/lbx.png"></div>
+                <div class="map2"><img src="picture/jt.png"></div>
+                <div class="map3"><img src="picture/map.png"></div>
+                <div class="map4" id="map_1"></div>
+            </div>
+        </li>
+        <li>
+            <div class="boxall" style="height:3.4rem">
+                <div class="alltitle">全国各年龄段人口数</div>
+                <div class="allnav" id="echart4"></div>
+                <div class="boxfoot"></div>
+            </div>
+            <div class="boxall" style="height: 3.2rem">
+                <div class="alltitle">中国各省份60岁及以上人口分布(2024)</div>
+                <div class="allnav" id="echart5"></div>
+                <div class="boxfoot"></div>
+            </div>
+            <div class="boxall" style="height: 3.8rem">
+                <div class="alltitle">城乡居民基本养老保险人数</div>
+                <div class="allnav" id="echart6"></div>
+                <div class="boxfoot"></div>
+            </div>
+        </li>
+    </ul>
+</div>
+
+<script type="text/javascript" src="js/china.js"></script>
+<script type="text/javascript" src="js/area_echarts.js"></script>
+<script language="JavaScript" src="js/js.js"></script>
+
+<script>
+    // 延迟加载 iframe，让主图表优先获得算力
+    window.onload = function() {
+        var iframe = document.getElementById('bg-iframe');
+        if(iframe && iframe.getAttribute('data-src')) {
+            iframe.src = iframe.getAttribute('data-src');
+        }
+    };
+
+    // AI聊天功能实现
+    document.addEventListener('DOMContentLoaded', function() {
+        const apiKey = 'apikey';
+        const chatContainer = document.getElementById('aiChatContainer');
+        const chatMessages = document.getElementById('chatMessages');
+        const userInput = document.getElementById('userInput');
+        const sendButton = document.getElementById('sendMessage');
+        const aiFloatBall = document.getElementById('aiFloatBall');
+        const closeChat = document.getElementById('closeChat');
+        const minimizeChat = document.getElementById('minimizeChat');
+        const typingIndicator = document.getElementById('typingIndicator');
+        const chatHeader = document.getElementById('chatHeader');
+        const resizeHandle = document.getElementById('resizeHandle');
+
+        let isDragging = false, isResizing = false;
+        let startX, startY, startWidth, startHeight, startLeft, startTop;
+
+        // 悬浮球点击事件
+        aiFloatBall.addEventListener('click', function(e) {
+            e.preventDefault();
+            chatContainer.style.display = 'flex';
+            adjustWindowPosition();
+        });
+
+        closeChat.addEventListener('click', () => chatContainer.style.display = 'none');
+
+        minimizeChat.addEventListener('click', function() {
+            chatContainer.classList.toggle('minimized');
+            minimizeChat.textContent = chatContainer.classList.contains('minimized') ? '+' : '−';
+        });
+
+        // 拖动
+        chatHeader.addEventListener('mousedown', function(e) {
+            if (e.target === chatHeader || e.target.tagName === 'H3') {
+                isDragging = true;
+                startX = e.clientX; startY = e.clientY;
+                startLeft = parseInt(getComputedStyle(chatContainer).left) || 0;
+                startTop = parseInt(getComputedStyle(chatContainer).top) || 0;
+                document.addEventListener('mousemove', onDrag);
+                document.addEventListener('mouseup', stopDrag);
+            }
+        });
+
+        function onDrag(e) {
+            if (!isDragging) return;
+            const dx = e.clientX - startX, dy = e.clientY - startY;
+            let newLeft = startLeft + dx, newTop = startTop + dy;
+            const maxLeft = window.innerWidth - chatContainer.offsetWidth;
+            const maxTop = window.innerHeight - chatContainer.offsetHeight;
+            newLeft = Math.max(0, Math.min(newLeft, maxLeft));
+            newTop = Math.max(0, Math.min(newTop, maxTop));
+            chatContainer.style.left = newLeft + 'px';
+            chatContainer.style.top = newTop + 'px';
+        }
+
+        function stopDrag() {
+            isDragging = false;
+            document.removeEventListener('mousemove', onDrag);
+            document.removeEventListener('mouseup', stopDrag);
+        }
+
+        // 调整大小
+        resizeHandle.addEventListener('mousedown', function(e) {
+            isResizing = true;
+            startX = e.clientX; startY = e.clientY;
+            startWidth = parseInt(getComputedStyle(chatContainer).width);
+            startHeight = parseInt(getComputedStyle(chatContainer).height);
+            document.addEventListener('mousemove', onResize);
+            document.addEventListener('mouseup', stopResize);
+        });
+
+        function onResize(e) {
+            if (!isResizing) return;
+            let newWidth = startWidth + (e.clientX - startX);
+            let newHeight = startHeight + (e.clientY - startY);
+            newWidth = Math.max(350, newWidth);
+            newHeight = Math.max(400, newHeight);
+            const maxWidth = window.innerWidth - parseInt(getComputedStyle(chatContainer).left || 0);
+            const maxHeight = window.innerHeight - parseInt(getComputedStyle(chatContainer).top || 0);
+            chatContainer.style.width = Math.min(newWidth, maxWidth) + 'px';
+            chatContainer.style.height = Math.min(newHeight, maxHeight) + 'px';
+        }
+
+        function stopResize() {
+            isResizing = false;
+            document.removeEventListener('mousemove', onResize);
+            document.removeEventListener('mouseup', stopResize);
+        }
+
+        function adjustWindowPosition() {
+            const rect = chatContainer.getBoundingClientRect();
+            const maxLeft = window.innerWidth - rect.width, maxTop = window.innerHeight - rect.height;
+            let left = parseInt(getComputedStyle(chatContainer).left || 0), top = parseInt(getComputedStyle(chatContainer).top || 0);
+            if (left < 0) chatContainer.style.left = '0px';
+            if (left > maxLeft) chatContainer.style.left = maxLeft + 'px';
+            if (top < 0) chatContainer.style.top = '0px';
+            if (top > maxTop) chatContainer.style.top = maxTop + 'px';
+        }
+
+        function sendMessage() {
+            const message = userInput.value.trim();
+            if (!message) return;
+            addMessage(message, 'user');
+            userInput.value = '';
+            typingIndicator.style.display = 'block';
+            scrollToBottom();
+            callAIAPI(message);
+        }
+
+        sendButton.addEventListener('click', sendMessage);
+        userInput.addEventListener('keypress', e => { if (e.key === 'Enter') sendMessage(); });
+
+        function addMessage(text, sender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}-message`;
+            messageDiv.innerHTML = text; // allow basic html from AI
+            chatMessages.appendChild(messageDiv);
+            scrollToBottom();
+        }
+
+        function scrollToBottom() { chatMessages.scrollTop = chatMessages.scrollHeight; }
+
+        async function callAIAPI(userMessage) {
+            try {
+                const response = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model: 'deepseek-v3.1',
+                        messages: [
+                            { role: 'system', content: '你是一个专业的AI助手，专注于回答关于中国人口老龄化、数据分析、养老政策等相关问题。要求：专业、准确、语言精炼排版美观。' },
+                            { role: 'user', content: userMessage }
+                        ],
+                        stream: false
+                    })
+                });
+                if (!response.ok) throw new Error(`API请求失败: ${response.status}`);
+                const data = await response.json();
+                typingIndicator.style.display = 'none';
+                if (data.choices && data.choices.length > 0) {
+                    addMessage(data.choices[0].message.content.replace(/\n/g, '<br/>'), 'ai');
+                } else {
+                    addMessage('抱歉，我没有收到有效的回复。', 'ai');
+                }
+            } catch (error) {
+                console.error('API调用错误:', error);
+                typingIndicator.style.display = 'none';
+                addMessage('抱歉，发生了错误，请检查网络或稍后再试。', 'ai');
+            }
+        }
+        window.addEventListener('resize', adjustWindowPosition);
+    });
+</script>
+
+<script>
+    // ============================================================
+    // 修复1：地图 visualMap（色阶）位置 —— 定位到地图容器左下角
+    // 修复2：左下角 fb1/fb2/fb3 图例与图表重叠
+    // ============================================================
+    (function applyFixes() {
+        function fixMapVisualMap() {
+            var mapDom = document.getElementById('map_1');
+            if (!mapDom) return;
+            var chart = echarts.getInstanceByDom(mapDom);
+            if (!chart) { setTimeout(fixMapVisualMap, 300); return; }
+            chart.setOption({
+                visualMap: {
+                    left: '25%',
+                    bottom: '5%'
+                }
+            });
+        }
+
+        function fixFbLegends() {
+            // fb1 老年年龄层次：把legend移到底部，避免与饼图重叠
+            var fb1dom = document.getElementById('fb1');
+            if (fb1dom) {
+                var c1 = echarts.getInstanceByDom(fb1dom);
+                if (c1) {
+                    c1.setOption({
+                        legend: {
+                            orient: 'horizontal',
+                            right: 'auto',
+                            left: 'center',
+                            top: 'auto',
+                            bottom: 2,
+                            itemWidth: 8, itemHeight: 8, itemGap: 5,
+                            textStyle: { color: 'rgba(255,255,255,.7)', fontSize: 9 }
+                        },
+                        series: [{ center: ['50%', '48%'], radius: ['35%', '55%'] }]
+                    });
+                }
+            }
+            // fb2 城乡人口：同理
+            var fb2dom = document.getElementById('fb2');
+            if (fb2dom) {
+                var c2 = echarts.getInstanceByDom(fb2dom);
+                if (c2) {
+                    c2.setOption({
+                        legend: {
+                            orient: 'horizontal',
+                            right: 'auto',
+                            left: 'center',
+                            top: 'auto',
+                            bottom: 2,
+                            itemWidth: 8, itemHeight: 8, itemGap: 8,
+                            textStyle: { color: 'rgba(255,255,255,.7)', fontSize: 9 }
+                        },
+                        series: [{ center: ['50%', '48%'], radius: ['35%', '55%'] }]
+                    });
+                }
+            }
+        }
+
+        // 等待所有图表初始化完毕后再修复
+        setTimeout(function() {
+            fixMapVisualMap();
+            fixFbLegends();
+        }, 800);
+        // 再延迟一次确保异步数据加载的图表也能修复
+        setTimeout(function() {
+            fixMapVisualMap();
+            fixFbLegends();
+        }, 2000);
+    })();
+</script>
+</body>
+</html>

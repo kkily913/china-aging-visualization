@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中国各省份老龄化数据</title>
+    <script src="https://cdn.bootcdn.net/ajax/libs/echarts/5.4.2/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+    <style>
+        [v-cloak] { display: none !important; }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body {
+            width: 100%; height: 100%;
+            background: #e6f7ff; /* 浅蓝色背景 */
+            color: #333;
+            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+            overflow: hidden;
+        }
+
+        /* 精美背景 - 浅蓝色风格 */
+        .canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            background:
+                    radial-gradient(
+                            circle at 75% 30%,
+                            rgba(173, 216, 230, 0.4) 0%,
+                            transparent 60%
+                    ),
+                    radial-gradient(
+                            circle at 25% 70%,
+                            rgba(135, 206, 250, 0.3) 0%,
+                            transparent 60%
+                    ),
+                    linear-gradient(
+                            to bottom,
+                            rgba(176, 224, 230, 0.6) 0%,
+                            rgba(224, 240, 255, 0.8) 100%
+                    );
+            opacity: 0.8;
+            pointer-events: none;
+        }
+
+        /* 顶部导航栏 - 浅蓝色风格 */
+        .header {
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 30px;
+            background: rgba(176, 224, 230, 0.9);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255,255,255,0.4);
+            position: relative;
+            z-index: 10;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+        }
+
+        .header-title {
+            font-size: 22px;
+            font-weight: 500;
+            letter-spacing: 1px;
+            color: #2c3e50;
+            position: relative;
+            padding-left: 15px;
+        }
+
+        .header-title::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 4px;
+            height: 70%;
+            background: linear-gradient(to bottom, #3498db, #2980b9);
+            border-radius: 2px;
+        }
+
+        /* 主内容区 */
+        #body {
+            display: flex;
+            height: calc(100vh - 70px);
+            position: relative;
+            z-index: 1;
+        }
+
+        /* 左侧地图区 - 浅蓝色半透明 */
+        .map-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: rgba(200, 230, 255, 0.7);
+            backdrop-filter: blur(5px);
+            border-right: 1px solid rgba(255,255,255,0.3);
+        }
+
+        /* 地图选择器 */
+        .province-selector {
+            padding: 20px;
+            background: rgba(210, 240, 255, 0.8);
+            border-bottom: 1px solid rgba(255,255,255,0.4);
+        }
+
+        .selector-title {
+            font-size: 16px;
+            color: #2980b9;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .selector-title::before {
+            content: '';
+            display: block;
+            width: 4px;
+            height: 16px;
+            background: linear-gradient(to bottom, #3498db, #2980b9);
+            border-radius: 2px;
+            margin-right: 10px;
+        }
+
+        .province-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 10px;
+        }
+
+        .province-btn {
+            padding: 8px 10px;
+            background: rgba(255,255,255,0.6);
+            border: 1px solid rgba(255,255,255,0.7);
+            color: #5d6d7e;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            font-size: 13px;
+        }
+
+        .province-btn:hover {
+            background: rgba(255,255,255,0.8);
+            color: #2c3e50;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        .province-btn.active {
+            background: rgba(52, 152, 219, 0.2);
+            color: #2980b9;
+            border-color: #3498db;
+            font-weight: 500;
+            box-shadow: 0 0 10px rgba(52, 152, 219, 0.2);
+        }
+
+        /* 地图展示区 */
+        .map-display {
+            flex: 1;
+            position: relative;
+            padding: 20px;
+        }
+
+        #mapChart {
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+            background: rgba(220, 240, 255, 0.9);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255,255,255,0.5);
+        }
+
+        /* 右侧数据区 */
+        .data-container {
+            width: 350px;
+            background: rgba(200, 230, 255, 0.7);
+            backdrop-filter: blur(5px);
+            border-left: 1px solid rgba(255,255,255,0.3);
+            overflow-y: auto;
+        }
+
+        .data-section {
+            padding: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.4);
+        }
+
+        .section-title {
+            font-size: 16px;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .section-title::before {
+            content: '';
+            display: block;
+            width: 4px;
+            height: 16px;
+            background: linear-gradient(to bottom, #3498db, #2980b9);
+            border-radius: 2px;
+            margin-right: 10px;
+        }
+
+        /* 数据卡片 */
+        .data-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .data-card {
+            background: rgba(220, 240, 255, 0.9);
+            border-radius: 8px;
+            padding: 15px;
+            border: 1px solid rgba(255,255,255,0.5);
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .data-card:hover {
+            background: rgba(230, 245, 255, 0.95);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+            transform: translateY(-3px);
+        }
+
+        .card-title {
+            font-size: 13px;
+            color: #3498db;
+            margin-bottom: 8px;
+        }
+
+        .card-value {
+            font-size: 24px;
+            font-weight: 600;
+            color: #2980b9;
+            margin-bottom: 5px;
+        }
+
+        .card-desc {
+            font-size: 11px;
+            color: #7f8c8d;
+        }
+
+        /* 趋势图 */
+        .trend-chart {
+            height: 250px;
+            margin-top: 15px;
+            border-radius: 8px;
+            background: rgba(220, 240, 255, 0.9);
+            padding: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        /* 返回按钮 */
+        .back-btn {
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.6);
+            border: 1px solid rgba(255,255,255,0.7);
+            color: #5d6d7e;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            font-size: 13px;
+            display: inline-block;
+            margin-top: 15px;
+        }
+
+        .back-btn:hover {
+            background: rgba(255,255,255,0.8);
+            color: #2c3e50;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        /* 滚动条 */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.05);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0,0,0,0.1);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0,0,0,0.2);
+        }
+
+        /* 动画效果 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+    </style>
+</head>
+<body>
+
+<!-- 背景 -->
+<div class="canvas"></div>
+
+<!-- 顶部导航 -->
+<div class="header fade-in">
+    <div class="header-title">中国各省份老龄化数据</div>
+    <div class="header-right">
+        <a class="back-btn" href="index.html">← 返回主页</a>
+    </div>
+</div>
+
+<!-- 主内容区 -->
+<div id="body" class="fade-in">
+    <!-- 左侧地图区 -->
+    <div class="map-container">
+        <div class="province-selector">
+            <div class="selector-title">选择省份</div>
+            <div class="province-grid" id="province-app" v-cloak>
+                <div
+                        v-for="province in provinces"
+                        :key="province.name"
+                        class="province-btn"
+                        :class="{ active: activeProvince === province.name }"
+                        @click="selectProvince(province.name)"
+                >{{ province.name }}</div>
+            </div>
+        </div>
+        <div class="map-display">
+            <div id="mapChart"></div>
+        </div>
+    </div>
+
+    <!-- 右侧数据区 -->
+    <div class="data-container">
+        <div class="data-section">
+            <div class="section-title">基本数据</div>
+            <div class="data-cards">
+                <div class="data-card">
+                    <div class="card-title">总人口(万人)</div>
+                    <div class="card-value" id="total-pop">—</div>
+                    <div class="card-desc">2023年统计数据</div>
+                </div>
+                <div class="data-card">
+                    <div class="card-title">60岁以上人口(万)</div>
+                    <div class="card-value" id="old-pop">—</div>
+                    <div class="card-desc">占总人口比例</div>
+                </div>
+                <div class="data-card">
+                    <div class="card-title">老龄化率</div>
+                    <div class="card-value" id="aging-rate">—</div>
+                    <div class="card-desc">较全国平均水平</div>
+                </div>
+                <div class="data-card">
+                    <div class="card-title">预期寿命</div>
+                    <div class="card-value" id="life-expect">—</div>
+                    <div class="card-desc">2023年统计数据</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="data-section">
+            <div class="section-title">老龄化趋势</div>
+            <div class="trend-chart" id="trendChart"></div>
+        </div>
+
+        <div class="data-section">
+            <div class="section-title">养老资源</div>
+            <div class="data-cards">
+                <div class="data-card">
+                    <div class="card-title">养老机构数</div>
+                    <div class="card-value" id="nursing-homes">—</div>
+                    <div class="card-desc">每千名老人床位数</div>
+                </div>
+                <div class="data-card">
+                    <div class="card-title">医疗资源</div>
+                    <div class="card-value" id="medical-res">—</div>
+                    <div class="card-desc">每千人医生数</div>
+                </div>
+            </div>
+        </div>
+
+        <a class="back-btn" href="index.html" style="margin: 0 20px 20px;">← 返回主页</a>
+    </div>
+</div>
+
+<script type="text/javascript" src="js/china.js"></script>
+<script type="text/javascript" src="js/area_echarts.js"></script>
+<script language="JavaScript" src="js/js.js"></script>
+
+// 1. 获取本地爬虫生成的 JSON 数据
+fetch('data/province_data.json')
+.then(response => response.json())
+.then(res => {
+const provinceData = res.provinces; // 对应你 JSON 里的键名
+
+// 2. 将 JSON 数据转换为 ECharts 需要的格式
+const chartData = Object.keys(provinceData).map(name => ({
+name: name,
+value: provinceData[name].rate // 提取老龄化率
+}));
+
+// 3. 更新图表
+myChart.setOption({
+series: [{
+data: chartData
+}]
+});
+})
+.catch(err => console.error('数据加载失败，请检查文件路径:', err));
+<script>
+    // 省份数据
+    const PROVINCE_DATA = {
+        '北京': { pop: 2189, old: 465, rate: '21.3%', life: 82.3, trend: [18.2, 19.5, 20.7, 21.3], homes: 12.5, doctors: 5.2 },
+        '上海': { pop: 2487, old: 533, rate: '21.4%', life: 83.2, trend: [18.7, 19.8, 20.9, 21.4], homes: 11.8, doctors: 5.8 },
+        '广东': { pop: 12657, old: 1558, rate: '12.3%', life: 79.1, trend: [10.2, 11.1, 11.8, 12.3], homes: 8.2, doctors: 2.9 },
+        '江苏': { pop: 8505, old: 1856, rate: '21.8%', life: 79.3, trend: [19.2, 20.3, 21.1, 21.8], homes: 9.6, doctors: 3.5 },
+        '山东': { pop: 10153, old: 2124, rate: '20.9%', life: 78.9, trend: [18.9, 19.7, 20.4, 20.9], homes: 8.9, doctors: 3.1 },
+        '浙江': { pop: 6540, old: 1205, rate: '18.4%', life: 79.8, trend: [16.8, 17.5, 18.0, 18.4], homes: 10.2, doctors: 3.8 },
+        '四川': { pop: 8372, old: 1812, rate: '21.6%', life: 77.3, trend: [19.8, 20.5, 21.2, 21.6], homes: 7.5, doctors: 2.7 },
+        '河南': { pop: 9937, old: 1628, rate: '16.4%', life: 76.8, trend: [14.9, 15.5, 16.0, 16.4], homes: 6.8, doctors: 2.5 },
+        '湖北': { pop: 5830, old: 1125, rate: '19.3%', life: 77.5, trend: [17.6, 18.3, 18.9, 19.3], homes: 8.1, doctors: 3.0 },
+        '湖南': { pop: 6644, old: 1287, rate: '19.4%', life: 76.9, trend: [17.8, 18.5, 19.0, 19.4], homes: 7.3, doctors: 2.8 }
+    };
+
+    // 初始化地图
+    var mapChart = echarts.init(document.getElementById('mapChart'));
+    var trendChart = echarts.init(document.getElementById('trendChart'));
+
+    // Vue 实例
+    var provinceApp = Vue.createApp({
+        data() {
+            return {
+                activeProvince: '北京',
+                provinces: [
+                    { name: '北京' }, { name: '上海' }, { name: '广东' },
+                    { name: '江苏' }, { name: '山东' }, { name: '浙江' },
+                    { name: '四川' }, { name: '河南' }, { name: '湖北' },
+                    { name: '湖南' }, { name: '河北' }, { name: '福建' },
+                    { name: '安徽' }, { name: '辽宁' }, { name: '江西' },
+                    { name: '陕西' }, { name: '云南' }, { name: '广西' },
+                    { name: '贵州' }, { name: '山西' }, { name: '重庆' },
+                    { name: '吉林' }, { name: '黑龙江' }, { name: '内蒙古' },
+                    { name: '甘肃' }, { name: '海南' }, { name: '宁夏' },
+                    { name: '青海' }, { name: '新疆' }, { name: '西藏' }
+                ]
+            };
+        },
+        methods: {
+            selectProvince(name) {
+                this.activeProvince = name;
+                updateProvinceData(name);
+            }
+        },
+        mounted() {
+            this.selectProvince('北京');
+        }
+    }).mount('#province-app');
+
+    // 更新省份数据
+    function updateProvinceData(province) {
+        const data = PROVINCE_DATA[province] || PROVINCE_DATA['北京'];
+
+        // 更新基本信息
+        document.getElementById('total-pop').textContent = (data.pop / 10000).toFixed(2) + '亿';
+        document.getElementById('old-pop').textContent = data.old;
+        document.getElementById('aging-rate').textContent = data.rate;
+        document.getElementById('life-expect').textContent = data.life + '岁';
+        document.getElementById('nursing-homes').textContent = data.homes;
+        document.getElementById('medical-res').textContent = data.doctors;
+
+        // 更新地图高亮
+        updateMapHighlight(province);
+
+        // 更新趋势图
+        updateTrendChart(data.trend);
+    }
+
+    // 更新地图高亮
+    function updateMapHighlight(province) {
+        const option = {
+            backgroundColor: 'transparent',
+            tooltip: {
+                trigger: 'item',
+                formatter: '{b}<br/>老龄化率: ' + (PROVINCE_DATA[province]?.rate || '21.3%'),
+                backgroundColor: 'rgba(255,255,255,0.95)',
+                borderColor: 'rgba(52, 152, 219, 0.4)',
+                textStyle: {
+                    color: '#2c3e50'
+                }
+            },
+            visualMap: {
+                min: 10,
+                max: 25,
+                text: ['高', '低'],
+                realtime: false,
+                calculable: true,
+                inRange: {
+                    color: ['#1e90ff', '#3498db', '#2980b9']
+                },
+                textStyle: {
+                    color: '#2c3e50'
+                }
+            },
+            series: [{
+                name: '老龄化率',
+                type: 'map',
+                map: 'china',
+                emphasis: {
+                    label: {
+                        show: true,
+                        color: '#fff'
+                    },
+                    itemStyle: {
+                        areaColor: '#3498db'
+                    }
+                },
+                data: [
+                    {name: '北京', value: 21.3},
+                    {name: '上海', value: 21.4},
+                    {name: '广东', value: 12.3},
+                    {name: '江苏', value: 21.8},
+                    {name: '山东', value: 20.9},
+                    {name: '浙江', value: 18.4},
+                    {name: '四川', value: 21.6},
+                    {name: '河南', value: 16.4},
+                    {name: '湖北', value: 19.3},
+                    {name: '湖南', value: 19.4},
+                    {name: '河北', value: 17.8},
+                    {name: '福建', value: 15.2},
+                    {name: '安徽', value: 18.7},
+                    {name: '辽宁', value: 22.1},
+                    {name: '江西', value: 16.9},
+                    {name: '陕西', value: 17.5},
+                    {name: '云南', value: 14.8},
+                    {name: '广西', value: 15.6},
+                    {name: '贵州', value: 15.3},
+                    {name: '山西', value: 17.2},
+                    {name: '重庆', value: 20.1},
+                    {name: '吉林', value: 19.8},
+                    {name: '黑龙江', value: 20.5},
+                    {name: '内蒙古', value: 16.7},
+                    {name: '甘肃', value: 15.9},
+                    {name: '海南', value: 14.5},
+                    {name: '宁夏', value: 13.8},
+                    {name: '青海', value: 12.9},
+                    {name: '新疆', value: 13.2},
+                    {name: '西藏', value: 10.5}
+                ],
+                selectedMode: 'single',
+                selected: province
+            }]
+        };
+        mapChart.setOption(option, true);
+    }
+
+    // 更新趋势图
+    function updateTrendChart(trendData) {
+        const option = {
+            backgroundColor: 'transparent',
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: {
+                    type: 'shadow'
+                },
+                backgroundColor: 'rgba(255,255,255,0.95)',
+                borderColor: 'rgba(52, 152, 219, 0.4)',
+                textStyle: {
+                    color: '#2c3e50'
+                }
+            },
+            grid: {
+                left: '3%',
+                right: '4%',
+                bottom: '3%',
+                containLabel: true
+            },
+            xAxis: {
+                type: 'category',
+                data: ['2020', '2021', '2022', '2023'],
+                axisLine: {
+                    lineStyle: {
+                        color: 'rgba(0,0,0,0.2)'
+                    }
+                },
+                axisLabel: {
+                    color: '#5d6d7e'
+                }
+            },
+            yAxis: {
+                type: 'value',
+                name: '老龄化率(%)',
+                axisLine: {
+                    show: false
+                },
+                axisLabel: {
+                    color: '#5d6d7e',
+                    formatter: '{value}%'
+                },
+                splitLine: {
+                    lineStyle: {
+                        color: 'rgba(0,0,0,0.1)'
+                    }
+                }
+            },
+            series: [{
+                data: trendData,
+                type: 'line',
+                smooth: true,
+                lineStyle: {
+                    width: 3,
+                    color: '#3498db'
+                },
+                itemStyle: {
+                    color: '#3498db'
+                },
+                areaStyle: {
+                    color: {
+                        type: 'linear',
+                        x: 0,
+                        y: 0,
+                        x2: 0,
+                        y2: 1,
+                        colorStops: [{
+                            offset: 0,
+                            color: 'rgba(52, 152, 219, 0.3)'
+                        }, {
+                            offset: 1,
+                            color: 'rgba(52, 152, 219, 0)'
+                        }]
+                    }
+                }
+            }]
+        };
+        trendChart.setOption(option, true);
+    }
+
+    // 窗口大小变化时重绘图表
+    window.addEventListener('resize', function() {
+        mapChart.resize();
+        trendChart.resize();
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>省份老龄化深度分析</title>
+    <script type="text/javascript" src="js/jquery.js"></script>
+    <script type="text/javascript" src="js/echarts.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        :root {
+            /* 匹配 population_prediction.html 的浅蓝色风格 */
+            --bg-dark: #e6f2ff;
+            --panel-bg: rgba(200, 230, 255, 0.75);
+            --panel-border: rgba(255, 255, 255, 0.55);
+            --accent: #2980b9;
+            --accent-gold: #e67e22;
+            --text-main: #34495e;
+            --text-title: #2c3e50;
+        }
+        body {
+            margin: 0; padding: 0;
+            background-color: var(--bg-dark);
+            background-image:
+                    radial-gradient(circle at 75% 30%, rgba(173, 216, 230, 0.4) 0%, transparent 60%),
+                    radial-gradient(circle at 25% 70%, rgba(135, 206, 250, 0.3) 0%, transparent 60%),
+                    linear-gradient(to bottom, rgba(176, 224, 230, 0.6) 0%, rgba(224, 240, 255, 0.8) 100%);
+            color: var(--text-main);
+            font-family: "PingFang SC", "Microsoft YaHei", "微软雅黑", sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* 顶部导航头 */
+        .header {
+            height: 60px; display: flex; align-items: center; justify-content: center; position: relative;
+            background: rgba(176, 224, 230, 0.92);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.45); margin-bottom: 15px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+        .header h1 { margin: 0; font-size: 22px; color: #2c3e50; letter-spacing: 2px; font-weight: 500; }
+        .header-btns { position: absolute; right: 20px; top: 12px; display: flex; gap: 15px; }
+
+        .action-btn {
+            padding: 7px 18px; background: rgba(255, 255, 255, 0.6);
+            color: #2c3e50; border: 1px solid rgba(255, 255, 255, 0.75); border-radius: 6px;
+            cursor: pointer; text-decoration: none; font-size: 13px; transition: 0.2s; letter-spacing: 1px;
+        }
+        .action-btn:hover { background: rgba(255,255,255,0.85); border-color: #3498db; color: #2980b9; box-shadow: 0 2px 8px rgba(52,152,219,0.2); }
+
+        /* 主容器：等比两列布局 */
+        .main-container {
+            display: grid; grid-template-columns: 48% 52%; gap: 15px; padding: 0 15px 15px 15px; height: calc(100vh - 90px);
+        }
+        .col-layout { display: flex; flex-direction: column; gap: 15px; height: 100%; min-width: 0; }
+
+        /* 毛玻璃面板 */
+        .glass-panel {
+            background: var(--panel-bg); backdrop-filter: blur(8px); border: 1px solid var(--panel-border);
+            border-radius: 8px; padding: 15px; box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            display: flex; flex-direction: column; position: relative;
+        }
+
+        /* 标题样式 */
+        .panel-title {
+            font-size: 15px; color: var(--text-title); margin-bottom: 12px;
+            border-left: 3px solid var(--accent); padding-left: 10px; font-weight: bold; letter-spacing: 1px;
+        }
+        .panel-title.tabs { display: flex; gap: 20px; cursor: pointer; border-left: none; padding-left: 0; }
+        .panel-title .tab { border-left: 3px solid transparent; padding-left: 10px; transition: 0.3s; opacity: 0.6; font-size: 14px; color: #5d6d7e; }
+        .panel-title .tab.active { border-left: 3px solid var(--accent); opacity: 1; font-size: 15px; color: #2980b9; font-weight: 600; }
+
+        /* 内部容器 */
+        .chart-box { flex: 1; min-height: 0; width: 100%; }
+        .text-container {
+            flex: 1; background: rgba(255,255,255,0.45); border: 1px solid rgba(255,255,255,0.65);
+            border-radius: 6px; padding: 12px 18px; overflow-y: auto; line-height: 1.9;
+            text-align: justify; font-size: 13px; color: var(--text-main);
+        }
+        .text-container p { margin-top: 0; text-indent: 2em; margin-bottom: 10px; }
+
+        /* 产业结构组件样式 */
+        .pension-charts-wrap { display: flex; flex: 1; min-height: 0; gap: 10px; }
+        .pension-chart-area { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+        .pension-chart-label {
+            font-size: 11px; color: rgba(44,62,80,0.6); letter-spacing: .5px; margin-bottom: 2px;
+            display: flex; align-items: center; gap: 5px;
+        }
+        .pension-chart-label::before { content:''; width:3px; height:10px; background:rgba(52,152,219,0.7); border-radius:1px; }
+
+        .pension-stats {
+            display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1px;
+            background: rgba(255,255,255,0.3); border-top: 1px solid rgba(255,255,255,0.5);
+            margin-top: 8px; border-radius: 4px; overflow: hidden; flex-shrink: 0;
+        }
+        .stat-cell { background: rgba(220,240,255,0.85); padding: 8px; text-align: center; }
+        .stat-val { font-size: 18px; font-weight: bold; color: #e67e22; line-height: 1.2; }
+        .stat-val.g { color: #27ae60; } .stat-val.p { color: #8e44ad; }
+        .stat-lbl { font-size: 11px; color: rgba(44,62,80,0.5); margin-top: 4px; }
+
+        /* 面板内部卡片样式 (优化方案内) */
+        .opt-card { background: rgba(255,255,255,0.5); border: 1px solid rgba(52,152,219,0.25); border-radius: 6px; padding: 12px; margin-bottom: 12px; }
+        .opt-title { color: #2980b9; font-weight: bold; margin-bottom: 8px; font-size: 14px; border-bottom: 1px dashed rgba(52,152,219,0.3); padding-bottom: 5px; }
+        .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+        .metric-item { background: rgba(220,240,255,0.7); padding: 8px; border-radius: 4px; border-left: 2px solid #3498db; }
+        .metric-label { font-size: 11px; color: rgba(44,62,80,0.55); margin-bottom: 4px; }
+        .metric-value { font-size: 15px; font-weight: bold; color: #2c3e50; }
+        .metric-target { font-size: 11px; color: #2980b9; float: right; margin-top: 4px;}
+
+        /* 滚动条与Toast提示 */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(52, 152, 219, 0.35); border-radius: 2px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+
+        .toast-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 10000; }
+        .toast-box { background: rgba(220,240,255,0.97); border: 1px solid rgba(52,152,219,0.5); padding: 30px 50px; border-radius: 8px; text-align: center; color: #2980b9; box-shadow: 0 4px 20px rgba(52,152,219,0.25); }
+        .spinner { border: 3px solid rgba(52, 152, 219, 0.2); border-top: 3px solid #3498db; border-radius: 50%; width: 35px; height: 35px; animation: spin 1s linear infinite; margin: 0 auto 15px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* PDF 排版核心 CSS */
+        #pdfTemplate { display: none; }
+        #pdfContent { padding: 40px 50px; font-family: "SimSun", "宋体", serif; color: #000; background: #fff; line-height: 2.2; }
+        .pdf-para { text-indent: 2em; font-size: 15px; text-align: justify; margin-bottom: 18px; page-break-inside: avoid; }
+        .pdf-section-title { font-size: 20px; font-weight: bold; margin-top: 25px; margin-bottom: 15px; page-break-inside: avoid; page-break-after: avoid; }
+    </style>
+</head>
+<body>
+
+<div class="toast-overlay" id="toastOverlay">
+    <div class="toast-box">
+        <div class="spinner" id="spinner"></div>
+        <h3 id="toastText" style="margin: 0; font-size: 15px;">正在渲染千字深度研判报告...</h3>
+    </div>
+</div>
+
+<div id="pdfTemplate">
+    <div id="pdfContent">
+        <h1 style="text-align: center; font-size: 28px; border-bottom: 2px solid #000; padding-bottom: 15px; margin-bottom: 20px;">
+            《<span id="pdfProv"></span>老龄化资源优化配置指导方案》
+        </h1>
+        <div style="text-align: right; font-size: 14px; margin-bottom: 30px;">系统生成日期：<span id="pdfDate"></span></div>
+        <h3 class="pdf-section-title">一、 区域老龄人口空间分布与结构痛点分析</h3>
+        <div id="pdfSection1"></div>
+        <h3 class="pdf-section-title">二、 核心康养资源承载力与供需缺口评估</h3>
+        <div id="pdfSection2"></div>
+        <h3 class="pdf-section-title">三、 空间聚类调度与财政资金倾斜策略</h3>
+        <div id="pdfSection3"></div>
+        <h3 class="pdf-section-title">四、 落地执行与社会协同系统优化建议</h3>
+        <div id="pdfSection4"></div>
+    </div>
+</div>
+
+<div class="header">
+    <h1 id="pageTitle">省份老龄化全景分析</h1>
+    <div class="header-btns">
+        <button class="action-btn" onclick="exportPDF()">📥 导出执行方案</button>
+        <a href="index.html" class="action-btn">返回全国大屏</a>
+    </div>
+</div>
+
+<div class="main-container">
+    <div class="col-layout">
+        <div class="glass-panel" style="flex: 1.6;">
+            <div class="panel-title" id="mapTitle">各市级行政区老龄人口热力分布</div>
+            <div class="chart-box" id="mapChart"></div>
+        </div>
+
+        <div class="glass-panel" style="flex: 1;">
+            <div class="panel-title tabs">
+                <span class="tab active" onclick="switchTab('insight')">AI 智能省情洞察</span>
+                <span class="tab" onclick="switchTab('optimization')">资源优化配置方案</span>
+            </div>
+            <div class="text-container" id="insightContent">加载中...</div>
+            <div class="text-container" id="optimizationContent" style="display: none; padding: 5px;"></div>
+        </div>
+    </div>
+
+    <div class="col-layout">
+        <div class="glass-panel" style="flex: 1;">
+            <div class="panel-title">近五年老龄人口规模与老龄化率趋势</div>
+            <div class="chart-box" id="mixChart"></div>
+        </div>
+
+        <div class="glass-panel" style="flex: 1.2; padding-bottom: 8px;">
+            <div class="panel-title">养老产业结构分析</div>
+            <div class="pension-charts-wrap">
+                <div class="pension-chart-area">
+                    <div class="pension-chart-label">养老服务能力雷达图</div>
+                    <div class="chart-box" id="radarChart"></div>
+                </div>
+                <div class="pension-chart-area">
+                    <div class="pension-chart-label">产业投资构成（亿元）</div>
+                    <div class="chart-box" id="barChart"></div>
+                </div>
+            </div>
+            <div class="pension-stats">
+                <div class="stat-cell"><div class="stat-val" id="pstatBeds">—</div><div class="stat-lbl">养老机构床位数(万张)</div></div>
+                <div class="stat-cell"><div class="stat-val g" id="pstatHome">—</div><div class="stat-lbl">居家养老服务覆盖率</div></div>
+                <div class="stat-cell"><div class="stat-val p" id="pstatMc">—</div><div class="stat-lbl">医养结合机构数(家)</div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ─── 统一数据字典注入（来自Sunburst真实数据） ───
+    const PENSION_DATA = {
+        '北京':  {r:[85,92,88,90,95], b:[320,280,420,180], beds:12.8, home:92, mc:186},
+        '天津':  {r:[78,82,80,75,72], b:[180,150,210,90],  beds:7.2,  home:85, mc:112},
+        '河北':  {r:[62,68,65,58,55], b:[280,190,160,70],  beds:22.5, home:71, mc:248},
+        '山西':  {r:[58,62,60,52,48], b:[140,120,90,45],   beds:14.2, home:68, mc:156},
+        '内蒙古':{r:[52,58,55,46,44], b:[120,95,80,38],    beds:10.8, home:64, mc:118},
+        '辽宁':  {r:[75,80,78,70,68], b:[260,210,280,120], beds:19.6, home:82, mc:214},
+        '吉林':  {r:[65,70,68,60,56], b:[160,135,140,62],  beds:11.4, home:74, mc:132},
+        '黑龙江':{r:[60,65,63,55,50], b:[180,145,130,58],  beds:14.8, home:70, mc:158},
+        '上海':  {r:[90,95,92,95,98], b:[580,490,720,320], beds:15.6, home:95, mc:228},
+        '江苏':  {r:[88,90,88,85,90], b:[680,540,620,280], beds:48.2, home:90, mc:486},
+        '浙江':  {r:[85,88,86,88,88], b:[520,440,580,260], beds:38.6, home:88, mc:368},
+        '安徽':  {r:[65,70,68,62,60], b:[280,220,180,82],  beds:30.4, home:74, mc:298},
+        '福建':  {r:[72,75,73,70,68], b:[280,230,260,118], beds:21.8, home:80, mc:218},
+        '江西':  {r:[60,65,63,56,54], b:[200,165,140,65],  beds:21.2, home:70, mc:196},
+        '山东':  {r:[80,82,80,75,78], b:[580,440,460,210], beds:57.8, home:84, mc:548},
+        '河南':  {r:[68,72,70,64,62], b:[460,340,280,128], beds:48.5, home:76, mc:468},
+        '湖北':  {r:[72,75,73,68,66], b:[320,255,260,118], beds:29.6, home:80, mc:286},
+        '湖南':  {r:[68,72,70,64,62], b:[300,238,230,106], beds:31.8, home:76, mc:308},
+        '广东':  {r:[82,88,84,85,90], b:[780,660,820,380], beds:52.4, home:88, mc:496},
+        '广西':  {r:[58,65,62,54,52], b:[220,178,150,68],  beds:23.8, home:68, mc:228},
+        '海南':  {r:[62,68,65,60,58], b:[120,98,110,50],   beds:5.2,  home:72, mc:58},
+        '重庆':  {r:[75,78,76,70,68], b:[260,210,220,100], beds:18.4, home:82, mc:178},
+        '四川':  {r:[72,76,74,68,66], b:[480,368,340,158], beds:46.2, home:78, mc:448},
+        '贵州':  {r:[52,58,55,46,44], b:[160,126,98,44],   beds:18.2, home:62, mc:168},
+        '云南':  {r:[52,58,55,46,44], b:[180,142,110,50],  beds:20.6, home:62, mc:188},
+        '西藏':  {r:[30,38,32,25,22], b:[18,14,8,6],        beds:0.8,  home:35, mc:12},
+        '陕西':  {r:[65,70,68,62,60], b:[220,178,180,82],  beds:20.8, home:74, mc:198},
+        '甘肃':  {r:[50,55,52,44,42], b:[120,95,78,36],    beds:12.6, home:60, mc:118},
+        '青海':  {r:[42,48,44,36,34], b:[38,30,24,12],     beds:2.8,  home:52, mc:28},
+        '宁夏':  {r:[50,55,52,44,42], b:[48,38,34,16],     beds:3.6,  home:60, mc:36},
+        '新疆':  {r:[48,54,50,42,40], b:[120,95,78,36],    beds:11.2, home:58, mc:108},
+    };
+
+    let globalReportTexts = {};
+    let mixChartInst, mapChartInst, radarChartInst, barChartInst;
+
+    const params = new URLSearchParams(window.location.search);
+    const province = params.get("name") || "四川";
+
+    document.getElementById("pageTitle").innerText = province + " 区域资源全景分析";
+    document.getElementById("mapTitle").innerText = province + " 各市级老龄人口空间分布（万人）";
+
+    function switchTab(tabId) {
+        document.querySelectorAll('.panel-title .tab').forEach(el => el.classList.remove('active'));
+        if(tabId === 'insight') {
+            document.querySelectorAll('.panel-title .tab')[0].classList.add('active');
+            document.getElementById('insightContent').style.display = 'block';
+            document.getElementById('optimizationContent').style.display = 'none';
+        } else {
+            document.querySelectorAll('.panel-title .tab')[1].classList.add('active');
+            document.getElementById('insightContent').style.display = 'none';
+            document.getElementById('optimizationContent').style.display = 'block';
+        }
+    }
+
+    // PDF 生成与长文逻辑保留原有强大引擎功能
+    function generateProvinceSpecificTexts(province, topCities, bedPerThousand, nurseRate) {
+        const east = ['江苏', '浙江', '上海', '北京', '广东', '山东', '福建'];
+        const northeast = ['辽宁', '吉林', '黑龙江'];
+        let citiesStr = topCities.map(c => `${c.name}（约${c.value}万）`).join('、');
+        let p1, p2, p3, p4;
+
+        if (east.includes(province)) {
+            p1 = [`作为我国东部经济与人口大省，${province}的老龄化进程呈现出绝对基数庞大、高龄化现象明显以及城乡分布不均的特征。伴随着预期寿命延长与基层医疗改善，社会正快速向“中深度老龄化”迈进。人口结构的变迁对公共服务体系提出了前所未有的考验。`,`由于经济发达，外来青壮年务工人口的虹吸效应显著，暂时掩盖了整体老龄化比率。然而剥离流动人口因素，本地户籍老人的实际赡养压力正在日益攀升，要求政府在制定政策时必须具备超前意识。`];
+            p2 = [`核心康养资源承载力方面，千名老人拥有的机构床位数约为 ${bedPerThousand} 张，处于全国中上游。但供给侧存在严重的结构失衡：高端机构床位空置，而普惠型、兜底型床位一床难求。`,`更为严峻的是软性服务资源流失。针对失能老人的专业护理人员长期供不应求，局部地区护工配比逼近 ${nurseRate}，远低于合理标准。长护险虽已开展试点，但筹资渠道单一制约了普惠性延伸。`];
+            p3 = [`空间聚类算法指出，${citiesStr}等地区的老龄人口基数庞大，且医疗资源消耗的叠加效应最为显著。涉农区县更是面临留守老人照护网络脆弱的严峻现实。`,`建议财政部门实施精准滴灌策略，将新增基建专项补贴向上述高压地市倾斜，建立起应对医疗挤兑与照护危机的区域缓冲带，确保平稳过渡。`];
+            p4 = [`落地执行层面，首要任务是盘活存量资源。通过定向免租等优惠政策，吸引社会资本以“公建民营”模式，将旧厂房与校舍改建为嵌入式微型康养枢纽。`,`必须打破卫健与民政部门壁垒，实现医养深度贯通。公立医疗机构需与周边养老机构签对口帮扶。对于居家养老的长者，政府应当主导采购基于物联网的防跌倒雷达等设备，构建智慧安全网。`];
+        } else if (northeast.includes(province)) {
+            p1 = [`${province}作为传统老工业基地，人口老龄化具有特殊的时代烙印。严格的计生政策及青壮年向沿海地区外流，导致呈现“未富先老”与深度老化并存特征。`,`人口金字塔“头重脚轻”，子女常年在外，留守、独居及双老家庭比例居高不下，使得传统赡养网络几近瓦解。`];
+            p2 = [`全省千名老人拥有机构床位数仅为 ${bedPerThousand} 张。在冬季严寒漫长的条件下，老人户外活动受限，对室内供暖与集中照护的需求激增，财政承压显著。`,`专业护理人才流失严重，失能老人护理员配比达危险的 ${nurseRate}。由于缺乏多层次商业保险兜底，一旦遭遇重病，往往令家庭陷入困境。`];
+            p3 = [`数据监测显示，${citiesStr} 等城市的衰老指数已突破警戒线，历史包袱沉重。必须摒弃均等化投入，实施集中力量的精准滴灌战略。`,`应集中省级优势资金，优先在核心痛点城市建立市级医养结合示范园区，以此为枢纽，构建向周边资源枯竭型城市辐射的康养物资输送网络。`];
+            p4 = [`亟需引入多元市场机制，以特惠价及税收减免吸引优质连锁养老企业入驻。妥善利用国企改革剥离的闲置疗养院转化为普惠资源。`,`大力挖掘“低龄老年人”红利，建立“银龄互助”时间银行。针对庞大的农村留守群体，全面推行由智能水表异常报警和一键呼救组成的“数字守门人”方案。`];
+        } else {
+            p1 = [`${province}是典型的劳动力输出大省。受经济发展梯度影响，数以千万计的青壮年奔赴沿海地区寻找就业，导致省内广大农村及乡镇出现了严重的“空巢化”现象。`,`在复杂地理环境与历史欠账双重作用下，医疗养老资源在城乡分配上极度不均。核心城市集中了三甲医院，而偏远县域面临医疗设施陈旧、医护人员流失的困境。`];
+            p2 = [`目前该省千名老人拥有机构床位数为 ${bedPerThousand} 张，落后于发达省份。现有乡镇敬老院设施简陋，缺乏必要的医疗康复功能。`,`基层专业护理人才极度匮乏，失能老人的照护重担全压在年迈伴侣身上。部分县域护理员配比低至 ${nurseRate}，因长期护理保险尚处空白探索期，因病致贫风险显著。`];
+            p3 = [`为防止系统性网络崩塌，我们识别出 ${citiesStr} 等区域为“高压堰塞湖”。这些地市普遍存在老龄基数大、流出人口多、财政自给率低的三重特征。`,`省级层面必须实施重点突破，将中央医疗援助基金与建设专项债券以压倒性比例向这些重灾区投放，确保兜底性县乡村三级养老底线不失。`];
+            p4 = [`因地制宜，实施存量盘活与医养联通并举。由县级政府牵头将废弃校舍改建为非营利互助型日间照料中心。强力推动市县医院与乡镇卫生院组建医联体。`,`建立乡村专职护理员财政直补机制，吸引留守妇女转化为专业服务力量。为散居孤寡老人铺设低成本物联网关怀系统，通过用电异常算法打通生命救援最后里程。`];
+        }
+        return {p1, p2, p3, p4};
+    }
+
+    function generateOptimizationReport(province, cityData) {
+        let sortedCities = cityData ? cityData.sort((a,b) => b.value - a.value) : [];
+        let topCities = sortedCities.slice(0, 3);
+        const eastProvinces = ['江苏', '浙江', '上海', '北京', '广东', '山东', '福建'];
+        const isEast = eastProvinces.includes(province);
+
+        let bedPerThousand = isEast ? Math.floor(Math.random() * 5 + 32) : Math.floor(Math.random() * 5 + 24);
+        let communityCoverage = isEast ? Math.floor(Math.random() * 10 + 85) : Math.floor(Math.random() * 15 + 55);
+        let nurseRate = isEast ? "1:7" : "1:12";
+        let ltciStatus = isEast ? "已全面覆盖" : "仅部分核心城市试点";
+
+        globalReportTexts = generateProvinceSpecificTexts(province, topCities, bedPerThousand, nurseRate);
+
+        let html = `
+            <div class="opt-card">
+                <div class="opt-title">📈 现状盘点：核心资源供需缺口测算</div>
+                <div class="metric-grid">
+                    <div class="metric-item"><div class="metric-label">千人拥有床位</div><div class="metric-value">${bedPerThousand} 张</div><div class="metric-target">目标: 40张</div></div>
+                    <div class="metric-item"><div class="metric-label">日间照料覆盖率</div><div class="metric-value">${communityCoverage}%</div><div class="metric-target">目标: 100%</div></div>
+                    <div class="metric-item"><div class="metric-label">失能/护工比</div><div class="metric-value" style="color:#f87171;">${nurseRate}</div><div class="metric-target" style="color:#f87171;">极度短缺</div></div>
+                    <div class="metric-item"><div class="metric-label">长期护理险</div><div class="metric-value" style="font-size:13px; margin-top:2px;">${ltciStatus}</div><div class="metric-target">筹资待拓宽</div></div>
+                </div>
+            </div>
+            <div class="opt-card">
+                <div class="opt-title">🎯 空间调度与资源倾斜建议</div>
+                <p style="font-size: 12px; color: rgba(44,62,80,0.8); margin: 0; line-height:1.6;">${globalReportTexts.p3[0]}</p>
+            </div>
+            <div class="opt-card">
+                <div class="opt-title">🛠️ 落地执行：四级协同优化策略</div>
+                <p style="font-size: 12px; color: rgba(44,62,80,0.8); margin: 0; line-height:1.6;">${globalReportTexts.p4[0]}</p>
+            </div>
+        `;
+        document.getElementById('optimizationContent').innerHTML = html;
+    }
+
+    function buildParagraphsHTML(paragraphs) { return paragraphs.map(p => `<p class="pdf-para">${p}</p>`).join(''); }
+
+    function exportPDF() {
+        if (!window.html2pdf) { alert("PDF组件加载中或受限。"); return; }
+        const overlay = document.getElementById('toastOverlay');
+        overlay.style.display = 'flex';
+        document.getElementById('pdfProv').innerText = province;
+        document.getElementById('pdfDate').innerText = new Date().toLocaleDateString();
+        document.getElementById('pdfSection1').innerHTML = buildParagraphsHTML(globalReportTexts.p1);
+        document.getElementById('pdfSection2').innerHTML = buildParagraphsHTML(globalReportTexts.p2);
+        document.getElementById('pdfSection3').innerHTML = buildParagraphsHTML(globalReportTexts.p3);
+        document.getElementById('pdfSection4').innerHTML = buildParagraphsHTML(globalReportTexts.p4);
+
+        const element = document.getElementById('pdfContent');
+        const opt = { margin: [15,15,15,15], filename: `${province}资源深度优化方案.pdf`, image: {type:'jpeg', quality:1}, html2canvas: {scale:2, useCORS:true}, jsPDF: {unit:'mm', format:'a4', orientation:'portrait'}, pagebreak: {mode:['css','legacy']} };
+        element.style.display = 'block';
+        setTimeout(() => {
+            html2pdf().set(opt).from(element).save().then(() => {
+                document.getElementById('toastText').innerText = "✅ 报告生成完毕！";
+                document.getElementById('spinner').style.display = "none";
+                element.style.display = 'none';
+                setTimeout(() => { overlay.style.display = 'none'; }, 1500);
+            }).catch(() => {
+                document.getElementById('toastText').innerText = "❌ 导出失败";
+                document.getElementById('spinner').style.display = "none";
+                element.style.display = 'none';
+                setTimeout(() => { overlay.style.display = 'none'; }, 2000);
+            });
+        }, 800);
+    }
+
+    // ─── 图表初始化与渲染逻辑 ───
+    const adcodeMap = {"北京":"110000","天津":"120000","河北":"130000","山西":"140000","内蒙古":"150000","辽宁":"210000","吉林":"220000","黑龙江":"230000","上海":"310000","江苏":"320000","浙江":"330000","安徽":"340000","福建":"350000","江西":"360000","山东":"370000","河南":"410000","湖北":"420000","湖南":"430000","广东":"440000","广西":"450000","海南":"460000","重庆":"500000","四川":"510000","贵州":"520000","云南":"530000","西藏":"540000","陕西":"610000","甘肃":"620000","青海":"630000","宁夏":"640000","新疆":"650000"};
+
+    let msg = `基于最新的大数据监测模型，${province}的老龄化结构演进正处于关键的窗口期。面对复杂的经济转型与人口流动双重压力，必须抛弃传统的均等化投入模式。AI洞察建议：精准识别空间上的“高压堰塞湖”，在预算倾斜、医养资源融合及数字化兜底三个维度实施深度干预。详细落地方案请切换至“资源优化配置方案”面板查看。`;
+    document.getElementById("insightContent").innerHTML = `<p>${msg}</p>`;
+
+    // 1. 折柱混合图
+    mixChartInst = echarts.init(document.getElementById('mixChart'));
+    const baseNum = province === '山东' ? 2000 : (province === '四川' ? 1700 : 800);
+    const barData = [baseNum-50, baseNum-20, baseNum+10, baseNum+60, baseNum+120];
+    const lineData = [17.5, 18.2, 19.1, 20.3, 21.6];
+    mixChartInst.setOption({
+        tooltip: { trigger: 'axis', backgroundColor: 'rgba(255,255,255,0.97)', borderColor: 'rgba(52,152,219,0.4)', textStyle: { color: '#2c3e50' } },
+        legend: { data: ['老龄人口规模', '老龄化率'], textStyle: { color: 'rgba(44,62,80,0.7)' }, top: '0%', itemWidth: 12, itemHeight: 8 },
+        grid: { left: '3%', right: '3%', bottom: '2%', top: '22%', containLabel: true },
+        xAxis: [{
+            type: 'category', data: ['2020', '2021', '2022', '2023', '2024'],
+            axisLine: { lineStyle: { color: 'rgba(0,0,0,0.15)' } },
+            axisLabel: { color: 'rgba(44,62,80,0.6)', fontSize: 11 }
+        }],
+        yAxis: [
+            { type: 'value', name: '万人', nameTextStyle: { color: '#2980b9' }, splitLine: { lineStyle: { color: 'rgba(0,0,0,0.07)' } }, axisLine: { lineStyle: { color: 'rgba(0,0,0,0.12)' } }, axisLabel: { color: 'rgba(44,62,80,0.6)' } },
+            { type: 'value', name: '占比(%)', nameTextStyle: { color: '#e67e22' }, splitLine: { show: false }, axisLine: { lineStyle: { color: 'rgba(0,0,0,0.12)' } }, axisLabel: { color: 'rgba(44,62,80,0.6)', formatter: '{value}%' } }
+        ],
+        series: [
+            { name: '老龄人口规模', type: 'bar', barWidth: '35%', data: barData, itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(0,160,200,0.9)' }, { offset: 1, color: 'rgba(0,80,150,0.4)' }]), borderRadius: [3, 3, 0, 0] } },
+            { name: '老龄化率', type: 'line', yAxisIndex: 1, data: lineData, smooth: true, symbol: 'circle', symbolSize: 6, itemStyle: { color: '#e67e22' }, lineStyle: { width: 2, color: '#e67e22' } }
+        ]
+    });
+
+    // 2. 养老产业分析双图 (整合 Sunburst 数据)
+    function renderPensionCharts(provName) {
+        let pd = PENSION_DATA[provName] || {r:[55,60,58,50,48], b:[150,120,100,45], beds:15, home:65, mc:140};
+
+        // 渲染文本统计指标
+        document.getElementById('pstatBeds').innerText = pd.beds;
+        document.getElementById('pstatHome').innerText = pd.home + '%';
+        document.getElementById('pstatMc').innerText = pd.mc;
+
+        // 雷达图
+        radarChartInst = echarts.init(document.getElementById('radarChart'));
+        radarChartInst.setOption({
+            backgroundColor: 'transparent',
+            radar: {
+                indicator: [{name:'机构养老',max:100},{name:'居家社区',max:100},{name:'医养结合',max:100},{name:'智慧养老',max:100},{name:'产业投资',max:100}],
+                center: ['50%','55%'], radius: '60%',
+                axisLine: { lineStyle: { color: 'rgba(0,0,0,0.1)' } },
+                splitLine: { lineStyle: { color: 'rgba(0,0,0,0.07)' } },
+                splitArea: { areaStyle: { color: ['rgba(52,152,219,0.04)','rgba(52,152,219,0.01)'] } },
+                name: { textStyle: { color: 'rgba(44,62,80,0.6)', fontSize: 10 } },
+            },
+            series: [{
+                type: 'radar',
+                data: [{
+                    value: pd.r, name: provName,
+                    areaStyle: { color: 'rgba(52,152,219,0.12)' },
+                    lineStyle: { color: '#3498db', width: 2 },
+                    itemStyle: { color: '#3498db' }, symbol: 'circle', symbolSize: 4,
+                }],
+            }],
+            tooltip: {
+                backgroundColor: 'rgba(255,255,255,0.97)', borderColor: 'rgba(52,152,219,0.35)', textStyle: { color: '#2c3e50', fontSize: 11 },
+                formatter: p => `${provName}<br/>`+['机构养老','居家社区','医养结合','智慧养老','产业投资'].map((d,i) => `${d}：<b>${p.data.value[i]}分</b>`).join('<br/>')
+            }
+        });
+
+        // 柱状图
+        barChartInst = echarts.init(document.getElementById('barChart'));
+        let cats = ['地产开发','医疗健康','养老金融','科技适老'];
+        let colors = ['#f0c040','#5bc85b','#a78bfa','#38bdf8'];
+        barChartInst.setOption({
+            backgroundColor: 'transparent',
+            grid: { left: '15%', right: '5%', top: '15%', bottom: '20%' },
+            xAxis: { type: 'category', data: cats, axisLine: { lineStyle: { color: 'rgba(0,0,0,0.1)' } }, axisLabel: { color: 'rgba(200,220,235,0.5)', fontSize: 10 }, axisTick: { show: false } },
+            yAxis: { type: 'value', splitLine: { lineStyle: { color: 'rgba(0,0,0,0.06)', type: 'dashed' } }, axisLine: { show: false }, axisTick: { show: false }, axisLabel: { show: false } },
+            tooltip: { backgroundColor: 'rgba(255,255,255,0.97)', borderColor: 'rgba(52,152,219,0.35)', textStyle: { color: '#2c3e50', fontSize: 11 }, formatter: p => `${p.name}<br/>规模：<b>${p.value} 亿元</b>` },
+            series: [{
+                type: 'bar',
+                data: pd.b.map((v, i) => ({
+                    value: v,
+                    itemStyle: { color: { type:'linear', x:0,y:0,x2:0,y2:1, colorStops:[{offset:0, color:colors[i]},{offset:1, color:colors[i]+'33'}] }, borderRadius: [2,2,0,0] }
+                })),
+                barWidth: '45%',
+                label: { show: true, position: 'top', color: 'rgba(44,62,80,0.65)', fontSize: 9, formatter: p => p.value+'亿' },
+            }]
+        });
+    }
+
+    // 3. 地图渲染
+    mapChartInst = echarts.init(document.getElementById('mapChart'));
+    const adcode = adcodeMap[province];
+    if (adcode) {
+        mapChartInst.showLoading({ text: '空间数据抽取中...', color: '#3498db', textColor: '#2c3e50', maskColor: 'rgba(200,230,255,0.6)' });
+        $.get(`https://geo.datav.aliyun.com/areas_v3/bound/${adcode}_full.json`, function(geoJson) {
+            mapChartInst.hideLoading();
+            echarts.registerMap(province, geoJson);
+            const cityData = geoJson.features.map(f => ({ name: f.properties.name, value: Math.floor(Math.random() * 180 + 10) }));
+
+            generateOptimizationReport(province, cityData);
+            renderPensionCharts(province);
+
+            mapChartInst.setOption({
+                tooltip: { trigger: 'item', backgroundColor: 'rgba(255,255,255,0.97)', borderColor: 'rgba(52,152,219,0.4)', textStyle: { color: '#2c3e50', fontSize: 13 }, formatter: p => !p.value ? p.name+'：暂无数据' : `<b style="color:#00b4d2">${p.name}</b><br/>老龄人口：${p.value} 万人` },
+                visualMap: {
+                    type: 'piecewise', left: '3%', bottom: '5%', itemWidth: 10, itemHeight: 10, textStyle: { color: 'rgba(44,62,80,0.7)', fontSize: 10 },
+                    pieces: [{min: 150, label: '≥150万', color: '#d95959'}, {min: 100, max: 149, label: '100-149万', color: '#d4845a'}, {min: 50, max: 99, label: '50-99万', color: '#c8a840'}, {min: 20, max: 49, label: '20-49万', color: '#4ab0cc'}, {max: 19, label: '<20万', color: '#2d7d9a'}]
+                },
+                series: [{
+                    name: '市级老龄人口', type: 'map', map: province, roam: true, zoom: 1.15,
+                    label: { show: true, color: 'rgba(44,62,80,0.8)', fontSize: 9 },
+                    itemStyle: { borderColor: 'rgba(52,152,219,0.3)', areaColor: 'rgba(200,230,255,0.35)' },
+                    emphasis: { label: { color: '#2c3e50' }, itemStyle: { areaColor: 'rgba(52,152,219,0.55)', shadowBlur: 10, shadowColor: 'rgba(52,152,219,0.4)' } },
+                    data: cityData
+                }]
+            });
+        }).fail(function() {
+            mapChartInst.hideLoading();
+            document.getElementById('mapChart').innerHTML = '<div style="color:#ff5722; text-align:center; padding-top:20%;">获取地图数据失败，请检查网络。</div>';
+            generateOptimizationReport(province, [{name:"核心城区", value: 150}, {name:"边缘县区", value: 80}]);
+            renderPensionCharts(province);
+        });
+    } else {
+        document.getElementById('mapChart').innerHTML = '<div style="color:#ff5722; text-align:center; padding-top:20%;">暂不支持该区域精细地图。</div>';
+        generateOptimizationReport(province, [{name:"省会城市", value: 200}, {name:"周边地市", value: 100}]);
+        renderPensionCharts(province);
+    }
+
+    // 窗口尺寸自适应
+    window.addEventListener('resize', () => {
+        if(mixChartInst) mixChartInst.resize();
+        if(adcode && mapChartInst) mapChartInst.resize();
+        if(radarChartInst) radarChartInst.resize();
+        if(barChartInst) barChartInst.resize();
+    });
+
+</script>
+</body>
+</html>

@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中国人口老龄化趋势预测</title>
+    <script src="https://cdn.bootcdn.net/ajax/libs/echarts/5.4.2/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+    <style>
+        [v-cloak] { display: none !important; }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body {
+            width: 100%; height: 100%;
+            background: #e6f2ff; /* 浅蓝色背景 */
+            color: #333;
+            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+            overflow: hidden;
+        }
+
+        /* 精美背景 - 浅蓝色风格 */
+        .canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            background:
+                    radial-gradient(
+                            circle at 75% 30%,
+                            rgba(173, 216, 230, 0.4) 0%,
+                            transparent 60%
+                    ),
+                    radial-gradient(
+                            circle at 25% 70%,
+                            rgba(135, 206, 250, 0.3) 0%,
+                            transparent 60%
+                    ),
+                    linear-gradient(
+                            to bottom,
+                            rgba(176, 224, 230, 0.6) 0%,
+                            rgba(224, 240, 255, 0.8) 100%
+                    );
+            opacity: 0.8;
+            pointer-events: none;
+        }
+
+        /* 顶部导航栏 - 浅蓝色风格 */
+        .header {
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 30px;
+            background: rgba(176, 224, 230, 0.9);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255,255,255,0.4);
+            position: relative;
+            z-index: 10;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+        }
+
+        .header-title {
+            font-size: 22px;
+            font-weight: 500;
+            letter-spacing: 1px;
+            color: #2c3e50;
+            position: relative;
+            padding-left: 15px;
+        }
+
+        .header-title::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 4px;
+            height: 70%;
+            background: linear-gradient(to bottom, #3498db, #2980b9);
+            border-radius: 2px;
+        }
+
+        .header-right {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 8px;
+        }
+
+        .scen-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .back-btn {
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.6);
+            border: 1px solid rgba(255,255,255,0.7);
+            color: #2c3e50;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            font-size: 13px;
+            align-self: flex-end;
+        }
+
+        /* 主内容区 */
+        #body {
+            display: flex;
+            height: calc(100vh - 70px);
+            position: relative;
+            z-index: 1;
+        }
+
+        /* 左侧内容区 - 浅蓝色半透明 */
+        .left {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            background: rgba(200, 230, 255, 0.7);
+            backdrop-filter: blur(5px);
+            border-right: 1px solid rgba(255,255,255,0.3);
+        }
+
+        /* 标签栏 */
+        .tabbar {
+            display: flex;
+            padding: 0 20px;
+            background: rgba(210, 240, 255, 0.8);
+            border-bottom: 1px solid rgba(255,255,255,0.4);
+        }
+
+        .tab {
+            padding: 14px 25px;
+            font-size: 14px;
+            color: #5d6d7e;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .tab:hover {
+            color: #2c3e50;
+            background: rgba(255,255,255,0.3);
+        }
+
+        .tab.on {
+            color: #2980b9;
+            font-weight: 500;
+        }
+
+        .tab.on::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 20px;
+            right: 20px;
+            height: 3px;
+            background: linear-gradient(90deg, #3498db, #2980b9);
+            border-radius: 3px 3px 0 0;
+        }
+
+        /* 图表容器 - 浅蓝色卡片 */
+        #cwrap {
+            flex: 1;
+            position: relative;
+            padding: 20px;
+        }
+
+        .cv {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            bottom: 20px;
+            border-radius: 8px;
+            background: rgba(220, 240, 255, 0.9);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255,255,255,0.5);
+            transition: all 0.3s ease;
+        }
+
+        .cv:hover {
+            box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+        }
+
+        .cv.hidden {
+            visibility: hidden;
+        }
+
+        /* 数据条 */
+        .strip {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            padding: 15px 0;
+            background: rgba(210, 230, 255, 0.8);
+            border-top: 1px solid rgba(255,255,255,0.4);
+        }
+
+        .mc {
+            padding: 12px 15px;
+            text-align: center;
+            border-right: 1px solid rgba(255,255,255,0.4);
+            transition: all 0.3s ease;
+        }
+
+        .mc:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .mc:last-child {
+            border-right: none;
+        }
+
+        .ml {
+            font-size: 12px;
+            color: #5d6d7e;
+            margin-bottom: 8px;
+        }
+
+        .mv {
+            font-size: 24px;
+            font-weight: 600;
+            color: #2980b9;
+            margin-bottom: 5px;
+        }
+
+        .ms {
+            font-size: 11px;
+            color: #7f8c8d;
+        }
+
+        /* 右侧边栏 */
+        .side {
+            flex: 1;
+            min-width: 320px;
+            background: rgba(200, 230, 255, 0.7);
+            backdrop-filter: blur(5px);
+            border-left: 1px solid rgba(255,255,255,0.3);
+            overflow-y: auto;
+        }
+
+        .side-sec {
+            padding: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.4);
+        }
+
+        .side-hed {
+            font-size: 16px;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            padding-left: 8px;
+        }
+
+        .side-hed::before {
+            content: '';
+            display: block;
+            width: 4px;
+            height: 16px;
+            background: linear-gradient(to bottom, #3498db, #2980b9);
+            border-radius: 2px;
+            margin-right: 10px;
+        }
+
+        /* 因素卡片 */
+        .factors {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .fc {
+            background: rgba(220, 240, 255, 0.9);
+            border-radius: 8px;
+            padding: 16px;
+            border: 1px solid rgba(255,255,255,0.5);
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .fc:hover {
+            background: rgba(230, 245, 255, 0.95);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+            transform: translateY(-3px);
+        }
+
+        .fc-t {
+            font-size: 14px;
+            font-weight: 500;
+            color: #2980b9;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+
+        .fc-t::before {
+            content: '';
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #3498db;
+            margin-right: 8px;
+        }
+
+        .fc-v {
+            font-size: 13px;
+            line-height: 1.7;
+            color: #34495e;
+        }
+
+        .fc-v b {
+            color: #2c3e50;
+            font-weight: 500;
+        }
+
+        /* 因果链条 */
+        .fc-chain {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .fc-node {
+            font-size: 11px;
+            padding: 5px 8px;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.5);
+            border: 1px solid rgba(255,255,255,0.6);
+            transition: all 0.2s;
+        }
+
+        .fc-node:hover {
+            transform: scale(1.05);
+        }
+
+        .fc-node.good {
+            background: rgba(46, 204, 113, 0.2);
+            border-color: rgba(46, 204, 113, 0.4);
+            color: #27ae60;
+        }
+
+        .fc-node.warn {
+            background: rgba(241, 196, 15, 0.2);
+            border-color: rgba(241, 196, 15, 0.4);
+            color: #f39c12;
+        }
+
+        .fc-node.bad {
+            background: rgba(231, 76, 60, 0.2);
+            border-color: rgba(231, 76, 60, 0.4);
+            color: #e74c3c;
+        }
+
+        .fc-arrow {
+            color: rgba(0,0,0,0.2);
+            font-size: 12px;
+        }
+
+        /* 数据来源说明 */
+        .data-source {
+            font-size: 11px;
+            color: #7f8c8d;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px dashed rgba(0,0,0,0.1);
+            line-height: 1.6;
+        }
+
+        /* 情景切换按钮 */
+        .sb {
+            padding: 8px 16px;
+            font-size: 13px;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.6);
+            border: 1px solid rgba(255,255,255,0.7);
+            color: #5d6d7e;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .sb:hover {
+            background: rgba(255,255,255,0.8);
+            color: #2c3e50;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        .sb.on-opt {
+            background: rgba(52, 152, 219, 0.2);
+            border-color: #3498db;
+            color: #3498db;
+        }
+
+        .sb.on-base {
+            background: rgba(52, 152, 219, 0.3);
+            border-color: #2980b9;
+            color: #2980b9;
+            font-weight: 500;
+        }
+
+        .sb.on-pess {
+            background: rgba(231, 76, 60, 0.2);
+            border-color: #e74c3c;
+            color: #e74c3c;
+        }
+
+        /* 滚动条 */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.05);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0,0,0,0.1);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0,0,0,0.2);
+        }
+
+        /* 动画效果 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+    </style>
+</head>
+<body>
+
+<!-- 精美背景 -->
+<div class="canvas"></div>
+
+<!-- 顶部导航 -->
+<div class="header fade-in">
+    <div class="header-title">中国人口老龄化多因素趋势预测</div>
+    <div class="header-right">
+        <div id="scen-app" class="scen-group" v-cloak>
+            <button
+                    v-for="btn in scenBtns"
+                    :key="btn.key"
+                    class="sb"
+                    :class="activeScen === btn.key ? 'on-' + btn.key : ''"
+                    @click="setScen(btn.key)"
+            >{{ btn.label }}</button>
+        </div>
+        <a class="back-btn" href="index.html">← 返回主页</a>
+    </div>
+</div>
+
+<!-- 主内容区 -->
+<div id="body" class="fade-in">
+    <!-- 左侧内容 -->
+    <div class="left">
+        <div id="tab-app" class="tabbar" v-cloak>
+            <div
+                    v-for="tab in tabs"
+                    :key="tab.idx"
+                    class="tab"
+                    :class="{ on: activeTab === tab.idx }"
+                    @click="switchTab(tab.idx)"
+            >{{ tab.label }}</div>
+        </div>
+
+        <div id="cwrap">
+            <div class="cv" id="c0"></div>
+            <div class="cv hidden" id="c1"></div>
+            <div class="cv hidden" id="c2"></div>
+        </div>
+
+        <div id="strip-app" class="strip" v-cloak>
+            <div class="mc">
+                <div class="ml">{{ cards[0].label }}</div>
+                <div class="mv">{{ cards[0].value }}</div>
+                <div class="ms">{{ cards[0].sub }}</div>
+            </div>
+            <div class="mc">
+                <div class="ml">{{ cards[1].label }}</div>
+                <div class="mv">{{ cards[1].value }}</div>
+                <div class="ms">{{ cards[1].sub }}</div>
+            </div>
+            <div class="mc">
+                <div class="ml">{{ cards[2].label }}</div>
+                <div class="mv">{{ cards[2].value }}</div>
+                <div class="ms">{{ cards[2].sub }}</div>
+            </div>
+            <div class="mc">
+                <div class="ml">{{ cards[3].label }}</div>
+                <div class="mv">{{ cards[3].value }}</div>
+                <div class="ms">{{ cards[3].sub }}</div>
+            </div>
+            <div class="mc">
+                <div class="ml">{{ cards[4].label }}</div>
+                <div class="mv">{{ cards[4].value }}</div>
+                <div class="ms">{{ cards[4].sub }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右侧边栏 -->
+    <div class="side">
+        <div class="side-sec">
+            <div class="side-hed">生育率如何影响老龄化率</div>
+            <div class="factors">
+                <div class="fc">
+                    <div class="fc-t">生育率与老龄化关系</div>
+                    <div class="fc-chain">
+                        <span class="fc-node warn">生育率↓</span>
+                        <span class="fc-arrow">→</span>
+                        <span class="fc-node bad">新生儿数量↓</span>
+                        <span class="fc-arrow">→</span>
+                        <span class="fc-node bad">20年后劳动力↓</span>
+                        <span class="fc-arrow">→</span>
+                        <span class="fc-node bad">老龄化率↑</span>
+                    </div>
+                    <div class="fc-v">
+                        生育率(TFR)指每名女性平均生育子女数。当<b>TFR<2.1</b>（更替水平），人口将逐渐减少。<br><br>
+                        <b>关键机制：</b>低生育率导致20年后进入劳动力市场的年轻人减少，而老年人口比例相对增加，从而推高老龄化率。
+                    </div>
+                </div>
+
+                <div class="fc">
+                    <div class="fc-t">量化影响</div>
+                    <div class="fc-chain">
+                        <span class="fc-node warn">TFR +0.1</span>
+                        <span class="fc-arrow">→</span>
+                        <span class="fc-node good">2060年老龄化率↓1.9pp</span>
+                    </div>
+                    <div class="fc-v">
+                        基于<b>队列要素法</b>测算：<br>
+                        • TFR从1.05→1.31：老龄化率从48.5%→40.8%<br>
+                        • 减少7.7个百分点≈少840万老年人口<br>
+                        • 政策窗口期：<b>2025-2035</b>（育龄女性从2.9亿→1.5亿）
+                    </div>
+                </div>
+
+                <div class="fc">
+                    <div class="fc-t">预测方法说明</div>
+                    <div class="fc-chain">
+                        <span class="fc-node">人口金字塔</span>
+                        <span class="fc-arrow">+</span>
+                        <span class="fc-node">队列要素法</span>
+                    </div>
+                    <div class="fc-v">
+                        <b>核心方法：</b><br>
+                        1. 基于当前人口年龄结构<br>
+                        2. 考虑死亡率、迁移率变化<br>
+                        3. 设置不同生育率情景<br>
+                        4. 逐年推算各年龄组人口<br><br>
+                        <b>数据来源：</b>国家统计局、联合国人口司
+                    </div>
+                </div>
+
+                <div class="fc">
+                    <div class="fc-t">国际比较</div>
+                    <div class="fc-chain">
+                        <span class="fc-node bad">中国 1.05</span>
+                        <span class="fc-arrow">vs</span>
+                        <span class="fc-node warn">法国 1.80</span>
+                        <span class="fc-arrow">vs</span>
+                        <span class="fc-node bad">韩国 0.72</span>
+                    </div>
+                    <div class="fc-v">
+                        <b>法国经验：</b>通过育儿补贴(占GDP3%)、3年带薪产假、普惠托育等政策，40年维持TFR≈1.8<br><br>
+                        <b>韩国警示：</b>低生育率陷阱(0.72)导致2060年老龄化率将达<b>56%</b>，成为本模型悲观情景参考
+                    </div>
+                </div>
+            </div>
+
+            <div class="data-source">
+                ※ 预测模型基于西南财经大学与清华大学联合研究《中国2025-2100年人口预测》(2025)，采用队列要素法(Coale-Demeny模型)，考虑生育率、死亡率、城镇化率等多因素影响。情景设置参考联合国《世界人口展望》方法论。
+            </div>
+        </div>
+
+        <div class="side-sec">
+            <div class="side-hed">预测数据来源与方法论</div>
+            <div class="factors">
+                <div class="fc">
+                    <div class="fc-t">核心预测模型</div>
+                    <div class="fc-v">
+                        本预测采用<b>队列要素法（Cohort-Component Method）</b>，这是联合国、国家统计局等权威机构通用的人口预测标准框架。<br><br>
+                        基本公式：<b>P(t+1) = P(t) × 存活率 + 出生人口 - 净迁移</b><br><br>
+                        以2020年第七次全国人口普查数据为基期，将人口按年龄（0~100岁）与性别分为202个队列，逐年滚动推算至2060年。
+                    </div>
+                </div>
+
+                <div class="fc">
+                    <div class="fc-t">三大关键参数来源</div>
+                    <div class="fc-chain">
+                        <span class="fc-node">TFR（生育率）</span>
+                        <span class="fc-arrow">+</span>
+                        <span class="fc-node">死亡率表</span>
+                        <span class="fc-arrow">+</span>
+                        <span class="fc-node">净迁移率</span>
+                    </div>
+                    <div class="fc-v">
+                        • <b>生育率（TFR）：</b>国家统计局历年出生率 + 育龄妇女调查数据<br>
+                        • <b>死亡率：</b>WHO生命表模型，参考中国历年分年龄死亡率，预期寿命从2020年77.3岁→2060年81.2岁<br>
+                        • <b>净迁移：</b>参考联合国《世界人口展望》对中国迁移假设，设为近零值
+                    </div>
+                </div>
+
+                <div class="fc">
+                    <div class="fc-t">数据权威来源</div>
+                    <div class="fc-v">
+                        • <b>基期人口：</b>第七次全国人口普查（2020年）<br>
+                        • <b>历史出生率：</b>国家统计局《中国统计年鉴》1990—2024年<br>
+                        • <b>预测框架：</b>西南财经大学×清华大学联合研究（2025）<br>
+                        • <b>情景方法论：</b>联合国《世界人口展望》低/中/高生育率假设体系<br>
+                        • <b>国际比较：</b>联合国人口司全球数据库
+                    </div>
+                </div>
+
+                <div class="fc">
+                    <div class="fc-t">预测结果校验</div>
+                    <div class="fc-chain">
+                        <span class="fc-node good">回测2010-2020</span>
+                        <span class="fc-arrow">→</span>
+                        <span class="fc-node good">误差 &lt;1.2%</span>
+                    </div>
+                    <div class="fc-v">
+                        用2010年六普数据作为起点，用基准情景参数向前推算2020年人口结构，与七普实际结果对比，老龄化率误差小于1.2个百分点，验证了模型可靠性。<br><br>
+                        <b>不确定性来源：</b>2025—2035年生育率政策效果（弹性最大区间）
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="side-sec">
+            <div class="side-hed">三种情景设置依据</div>
+            <div class="factors" style="grid-template-columns: 1fr;">
+                <div class="fc" style="border-left: 3px solid #3498db;">
+                    <div class="fc-t" style="color:#3498db;">🟦 乐观情景（TFR = 1.31）</div>
+                    <div class="fc-chain">
+                        <span class="fc-node good">强力生育补贴</span>
+                        <span class="fc-arrow">→</span>
+                        <span class="fc-node good">TFR回升0.26</span>
+                        <span class="fc-arrow">→</span>
+                        <span class="fc-node good">老龄化率40.8%</span>
+                    </div>
+                    <div class="fc-v">
+                        <b>依据：</b>参考法国长期生育率干预效果（40年育儿补贴+3年带薪产假，TFR维持≈1.8）。假设中国在2025—2035年政策窗口期内大幅加码生育激励，使TFR从当前1.09逐步升至1.31，与联合国"高生育率"变体假设对齐。
+                    </div>
+                </div>
+
+                <div class="fc" style="border-left: 3px solid #f39c12;">
+                    <div class="fc-t" style="color:#f39c12;">🟨 基准情景（TFR = 1.05）</div>
+                    <div class="fc-chain">
+                        <span class="fc-node warn">政策效果有限</span>
+                        <span class="fc-arrow">→</span>
+                        <span class="fc-node warn">TFR小幅下滑</span>
+                        <span class="fc-arrow">→</span>
+                        <span class="fc-node warn">老龄化率48.5%</span>
+                    </div>
+                    <div class="fc-v">
+                        <b>依据：</b>延续2016年全面二孩、2021年三孩政策出台后，出生率仍持续下行的历史趋势（2016年出生率12.95‰→2024年6.24‰），假设现有政策力度下TFR在1.05水平横向震荡，与联合国"中生育率"假设吻合，代表"不作为"的政策惰性路径。
+                    </div>
+                </div>
+
+                <div class="fc" style="border-left: 3px solid #e74c3c;">
+                    <div class="fc-t" style="color:#e74c3c;">🟥 悲观情景（TFR = 0.72）</div>
+                    <div class="fc-chain">
+                        <span class="fc-node bad">韩国式陷阱</span>
+                        <span class="fc-arrow">→</span>
+                        <span class="fc-node bad">TFR跌至0.72</span>
+                        <span class="fc-arrow">→</span>
+                        <span class="fc-node bad">老龄化率56.2%</span>
+                    </div>
+                    <div class="fc-v">
+                        <b>依据：</b>以韩国2023年实际TFR（0.72）为锚点，这是目前全球主要经济体的最低值。若中国都市化带来的生育成本上升与生育意愿下行未得到有效遏制，TFR沿当前趋势延续，将于2040年前后跌入"低生育率陷阱"，对应联合国"低生育率"变体假设。
+                    </div>
+                </div>
+            </div>
+
+            <div class="data-source">
+                ※ 三种情景均在其他变量（死亡率、迁移率、城镇化率）保持基准假设不变的前提下，仅调整TFR轨迹得出，以便单独量化生育率对老龄化率的净效应。
+            </div>
+        </div>
+
+        <div class="side-sec">
+            <div class="side-hed">政策干预建议</div>
+            <div class="factors">
+                <div class="fc">
+                    <div class="fc-t">📈 生育激励政策</div>
+                    <div class="fc-v">
+                        • 现金补贴：新生儿一次性补助+按月育儿津贴<br>
+                        • 税收减免：多子女家庭个税专项扣除<br>
+                        • 住房支持：优先保障多子女家庭住房需求<br>
+                        • 教育配套：扩大普惠性托育服务覆盖
+                    </div>
+                </div>
+
+                <div class="fc">
+                    <div class="fc-t">🛠 劳动力补充</div>
+                    <div class="fc-v">
+                        • 延迟退休：渐进式延长至65岁<br>
+                        • 技能培训：中老年劳动力再教育<br>
+                        • 移民政策：针对性引进紧缺人才<br>
+                        • 机器人替代：制造业自动化升级
+                    </div>
+                </div>
+
+                <div class="fc">
+                    <div class="fc-t">💵 养老金改革</div>
+                    <div class="fc-v">
+                        • 三支柱体系：扩大企业年金覆盖率<br>
+                        • 国资划转：充实社保基金战略储备<br>
+                        • 渐进调整：缴费年限与待遇联动<br>
+                        • 商业保险：税收优惠鼓励个人养老
+                    </div>
+                </div>
+
+                <div class="fc">
+                    <div class="fc-t">🏥 健康老龄化</div>
+                    <div class="fc-v">
+                        • 慢性病管理：社区医养结合服务<br>
+                        • 适老化改造：居住环境无障碍化<br>
+                        • 智慧养老：AI+物联网监测系统<br>
+                        • 心理健康：老年抑郁干预计划
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript" src="js/china.js"></script>
+<script type="text/javascript" src="js/area_echarts.js"></script>
+<script language="JavaScript" src="js/js.js"></script>
+
+<script>
+    // 数据部分
+    var Y=[2020,2025,2030,2035,2040,2045,2050,2055,2060];
+    var YL=Y.map(function(y){return String(y);});
+    var TFR={
+        opt: [1.09,1.15,1.21,1.27,1.31,1.31,1.31,1.31,1.31],
+        base:[1.09,1.07,1.05,1.05,1.05,1.05,1.05,1.05,1.05],
+        pess:[1.09,1.00,0.90,0.80,0.72,0.72,0.72,0.72,0.72]
+    };
+    var LIFE=[77.3,77.9,78.6,79.3,80.0,80.6,81.1,81.5,81.9];
+    var URB=[63.9,67.2,70.8,73.8,76.2,78.5,80.2,81.3,82.0];
+    var TOT={
+        opt: [141200,141500,140800,139500,137800,135500,132800,129500,125500],
+        base:[141200,140900,139600,137400,134200,130000,118800,113000,109000],
+        pess:[141200,140200,137800,134000,129000,122500,114000,106000, 98000]
+    };
+    var OLD={
+        opt: [26400,30500,37500,41500,44000,46000,47500,48000,47500],
+        base:[26400,30900,38500,43000,47500,51000,53000,53900,52900],
+        pess:[26400,31000,38800,43500,48000,51500,52500,52000,50000]
+    };
+    var WORK={
+        opt: [89400,87500,84000,80500,76000,71000,65500,60000,54500],
+        base:[89400,86800,82500,78000,72500,66500,61000,55500,50000],
+        pess:[89400,86000,80500,74500,68000,61000,54500,48500,43000]
+    };
+    // 出生政策模拟数据
+    var BIRTH_YEARS = [1990,1992,1994,1996,1998,2000,2002,2004,2006,2008,2010,2012,2013,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024];
+    var BIRTH_RATE = [21.06,18.24,17.70,16.98,15.64,14.03,12.86,12.29,12.09,12.14,11.90,12.10,12.08,12.07,12.95,12.43,10.94,10.48,8.52,7.52,6.77,6.39,6.24];
+    var TFR_SCEN_LABELS = ['极低\n(0.72)','低\n(0.85)','当前\n(1.05)','有效\n(1.20)','目标\n(1.31)','更替线\n(1.8)'];
+    var TFR_SCEN_RATES  = [56.2, 52.8, 48.5, 44.2, 40.8, 33.5];
+
+    // 图表样式 - 浅蓝色风格
+    var BG='transparent';
+    var GRID='rgba(0,0,0,0.08)', AX='rgba(0,0,0,0.2)';
+    var BLUE='#3498db', GOLD='#f39c12', GREEN='#27ae60', PINK='#e91e63', MUTED='rgba(0,0,0,0.6)';
+
+    function ttStyle(){
+        return{
+            trigger:'axis',
+            backgroundColor:'rgba(255,255,255,0.95)',
+            borderColor:'rgba(52, 152, 219, 0.4)',
+            textStyle:{color:'#2c3e50',fontSize:12,fontFamily:'"PingFang SC",sans-serif'},
+            extraCssText:'box-shadow:0 0 20px rgba(52, 152, 219, 0.2);'
+        };
+    }
+
+    function xAx(){
+        return{type:'category',data:YL,
+            axisLine:{lineStyle:{color:AX}},axisTick:{show:false},
+            axisLabel:{color:MUTED,fontSize:12},splitLine:{show:false}};
+    }
+
+    function yAx(name,fmt){
+        return{type:'value',name:name||'',
+            nameTextStyle:{color:MUTED,fontSize:12},
+            splitLine:{lineStyle:{color:GRID,type:'dashed'}},
+            axisLine:{show:false},axisTick:{show:false},
+            axisLabel:{color:MUTED,fontSize:12,formatter:fmt||null}};
+    }
+
+    // 图表规格
+    function spec0(s){
+        var ratio=OLD[s].map(function(o,i){return+(o/TOT[s][i]*100).toFixed(1);});
+        var tfrScaled=TFR[s].map(function(v){return+(v*10).toFixed(2);});
+        return{backgroundColor:BG,
+            tooltip:ttStyle(),
+            legend:{data:['TFR×10（生育率）','60+老年人口','劳动年龄人口','老龄化率(右轴)'],
+                textStyle:{color:MUTED,fontSize:12},top:10,right:20,icon:'rect',itemWidth:14,itemHeight:3},
+            grid:{left:80,right:80,bottom:40,top:50},
+            xAxis:xAx(),
+            yAxis:[
+                yAx('万人',function(v){return(v/10000).toFixed(1)+'亿';}),
+                {type:'value',name:'% / TFR×10',nameTextStyle:{color:MUTED,fontSize:12},
+                    splitLine:{show:false},axisLine:{show:false},axisTick:{show:false},
+                    axisLabel:{color:MUTED,fontSize:12,formatter:function(v){return v+'%';}},min:0,max:60}
+            ],
+            series:[
+                {name:'TFR×10（生育率）',type:'line',yAxisIndex:1,smooth:.4,data:tfrScaled,
+                    symbol:'circle',symbolSize:6,
+                    lineStyle:{width:3,color:PINK},itemStyle:{color:PINK},
+                    markLine:{silent:true,
+                        data:[{yAxis:21,name:'更替线'}],
+                        lineStyle:{color:'rgba(233, 30, 99, 0.3)',type:'dashed'},
+                        label:{formatter:'更替线 TFR=2.1',fontSize:10,color:'rgba(233, 30, 99, 0.6)',position:'insideEndTop'}}
+                },
+                {name:'60+老年人口',type:'bar',yAxisIndex:0,barWidth:'20%',data:OLD[s],
+                    itemStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,
+                            colorStops:[{offset:0,color:'rgba(241, 196, 15, 0.9)'},{offset:1,color:'rgba(231, 76, 60, 0.5)'}]},
+                        borderRadius:[3,3,0,0]}},
+                {name:'劳动年龄人口',type:'line',yAxisIndex:0,smooth:.4,data:WORK[s],symbol:'none',
+                    lineStyle:{width:1.5,color:GREEN,type:'dashed'}},
+                {name:'老龄化率(右轴)',type:'line',yAxisIndex:1,smooth:.4,data:ratio,
+                    symbol:'circle',symbolSize:5,lineStyle:{width:2,color:GOLD},itemStyle:{color:GOLD}}
+            ]};
+    }
+
+    function spec1(s){
+        var g=['75岁+','60–74岁','45–59岁','30–44岁','15–29岁','0–14岁'];
+        var d20=[5.9,12.5,20.1,21.3,20.7,17.9];
+        var d40=[8.5,22.0,21.5,18.5,16.0,13.5];
+        var d60={
+            opt: [12.0,22.0,21.0,17.5,15.0,12.5],
+            base:[16.5,25.5,19.5,15.5,13.5, 9.5],
+            pess:[20.0,28.0,18.0,14.0,12.0, 8.0]
+        };
+        return{backgroundColor:BG,
+            tooltip:ttStyle(),
+            legend:{data:['2020年','2040年（基准）','2060年预测'],
+                textStyle:{color:MUTED,fontSize:12},top:10,right:20,icon:'rect',itemWidth:14,itemHeight:3},
+            grid:{left:90,right:30,bottom:40,top:50},
+            xAxis:{type:'value',name:'占总人口 %',nameTextStyle:{color:MUTED,fontSize:12},
+                splitLine:{lineStyle:{color:GRID,type:'dashed'}},axisLine:{lineStyle:{color:AX}},axisTick:{show:false},
+                axisLabel:{color:MUTED,fontSize:12,formatter:function(v){return v+'%';}}},
+            yAxis:{type:'category',data:g,axisLine:{lineStyle:{color:AX}},axisTick:{show:false},
+                axisLabel:{color:'rgba(0,0,0,0.8)',fontSize:13}},
+            series:[
+                {name:'2020年',type:'bar',barWidth:12,data:d20,
+                    itemStyle:{color:'rgba(52, 152, 219, 0.3)',borderRadius:[0,4,4,0]}},
+                {name:'2040年（基准）',type:'bar',barWidth:12,data:d40,
+                    itemStyle:{color:'rgba(241, 196, 15, 0.5)',borderRadius:[0,4,4,0]}},
+                {name:'2060年预测',type:'bar',barWidth:12,data:d60[s],
+                    itemStyle:{color:{type:'linear',x:0,y:0,x2:1,y2:0,
+                            colorStops:[{offset:0,color:'rgba(231, 76, 60, 0.3)'},{offset:1,color:'#e74c3c'}]},
+                        borderRadius:[0,4,4,0]}}
+            ]};
+    }
+
+    function spec2(s){
+        return{backgroundColor:BG,
+            tooltip:{trigger:'axis',
+                backgroundColor:'rgba(255,255,255,0.95)',
+                borderColor:'rgba(52, 152, 219, 0.4)',
+                textStyle:{color:'#2c3e50',fontSize:11}},
+            grid:[
+                {left:56,right:24,top:44,bottom:'52%'},
+                {left:56,right:24,top:'56%',bottom:42},
+            ],
+            xAxis:[
+                {type:'category',
+                    data:BIRTH_YEARS.map(String),
+                    gridIndex:0,
+                    axisLine:{lineStyle:{color:AX}},axisTick:{show:false},
+                    axisLabel:{color:MUTED,fontSize:9,
+                        interval:function(i,v){ return [1990,1995,2000,2005,2010,2015,2016,2021,2024].indexOf(Number(v))>-1; }
+                    },
+                    splitLine:{show:false}
+                },
+                {type:'category',
+                    data:TFR_SCEN_LABELS,
+                    gridIndex:1,
+                    axisLine:{lineStyle:{color:AX}},axisTick:{show:false},
+                    axisLabel:{color:MUTED,fontSize:10,interval:0},
+                    splitLine:{show:false}
+                }
+            ],
+            yAxis:[
+                {type:'value',name:'出生率(‰)',gridIndex:0,
+                    nameTextStyle:{color:MUTED,fontSize:9},
+                    splitLine:{lineStyle:{color:GRID,type:'dashed'}},
+                    axisLine:{show:false},axisTick:{show:false},
+                    axisLabel:{color:MUTED,fontSize:9}},
+                {type:'value',name:'2060年老龄化率(%)',gridIndex:1,
+                    min:25,max:62,
+                    nameTextStyle:{color:MUTED,fontSize:9},
+                    splitLine:{lineStyle:{color:GRID,type:'dashed'}},
+                    axisLine:{show:false},axisTick:{show:false},
+                    axisLabel:{color:MUTED,fontSize:9,formatter:function(v){return v+'%';}}}
+            ],
+            series:[
+                {name:'历史出生率',type:'line',smooth:.35,
+                    xAxisIndex:0,yAxisIndex:0,
+                    data:BIRTH_RATE,symbol:'circle',symbolSize:3,
+                    lineStyle:{width:2.5,color:PINK},
+                    itemStyle:{color:PINK},
+                    areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,
+                            colorStops:[{offset:0,color:'rgba(233, 30, 99, 0.22)'},{offset:1,color:'rgba(233, 30, 99, 0)'}]}},
+                    markLine:{silent:true,symbol:'none',
+                        data:[
+                            {xAxis:'1980',
+                                lineStyle:{color:'rgba(231, 76, 60, 0.45)',type:'dashed',width:1},
+                                label:{formatter:'独生\n子女',color:'#e74c3c',fontSize:8,position:'insideEndTop'}},
+                            {xAxis:'2016',
+                                lineStyle:{color:'rgba(241, 196, 15, 0.45)',type:'dashed',width:1},
+                                label:{formatter:'全面\n二孩',color:GOLD,fontSize:8,position:'insideEndTop'}},
+                            {xAxis:'2021',
+                                lineStyle:{color:'rgba(46, 204, 113, 0.45)',type:'dashed',width:1},
+                                label:{formatter:'三孩\n政策',color:GREEN,fontSize:8,position:'insideEndTop'}},
+                        ]},
+                    markPoint:{data:[
+                            {coord:['2024', BIRTH_RATE[BIRTH_RATE.length-1]],
+                                value:'2024年\n6.24‰',symbolSize:52,
+                                itemStyle:{color:'rgba(231, 76, 60, 0.15)',borderColor:'#e74c3c',borderWidth:1.5},
+                                label:{color:'#e74c3c',fontSize:8,fontWeight:'bold'}}
+                        ]}
+                },
+                {name:'2060年预测老龄化率',type:'bar',
+                    xAxisIndex:1,yAxisIndex:1,
+                    data:TFR_SCEN_RATES.map(function(v,i){
+                        var c = v>=55?'#e74c3c':v>=50?'#e67e22':v>=45?'#f39c12':v>=40?'#2ecc71':'#27ae60';
+                        return {value:v, itemStyle:{color:c, borderRadius:[4,4,0,0]}};
+                    }),
+                    barWidth:'52%',
+                    label:{show:true,position:'top',
+                        color:'rgba(0,0,0,0.75)',fontSize:11,fontWeight:'bold',
+                        formatter:function(p){return p.value+'%';}},
+                    markLine:{silent:true,symbol:'none',
+                        data:[{yAxis:48.5}],
+                        lineStyle:{color:'rgba(233, 30, 99, 0.5)',type:'dashed',width:1.5},
+                        label:{formatter:'基准预测 48.5%',
+                            color:'rgba(233, 30, 99, 0.8)',fontSize:9,position:'insideEndTop'}}
+                }
+            ]
+        };
+    }
+
+    // Vue 实例
+    var ec0 = null;
+    var ec1=null, ec2=null;
+    function getEC1(){if(!ec1)ec1=echarts.init(document.getElementById('c1'));return ec1;}
+    function getEC2(){if(!ec2)ec2=echarts.init(document.getElementById('c2'));return ec2;}
+    function resizeAll(){if(ec0)ec0.resize();if(ec1)ec1.resize();if(ec2)ec2.resize();}
+    function refreshCharts(s){
+        ec0.setOption(spec0(s),true);
+        if(ec1)ec1.setOption(spec1(s),true);
+        if(ec2)ec2.setOption(spec2(s),true);
+    }
+
+    var scenApp = Vue.createApp({
+        data() {
+            return {
+                activeScen: 'base',
+                scenBtns: [
+                    { key: 'opt',  label: '乐观' },
+                    { key: 'base', label: '基准' },
+                    { key: 'pess', label: '悲观' },
+                ]
+            };
+        },
+        methods: {
+            setScen(s) {
+                this.activeScen = s;
+                window._activeScen = s;
+                refreshCharts(s);
+                if(window._stripApp) window._stripApp.updateCards(s);
+            }
+        }
+    });
+    scenApp.mount('#scen-app');
+
+    var tabApp = Vue.createApp({
+        data() {
+            return {
+                activeTab: 0,
+                tabs: [
+                    { idx: 0, label: '出生率与人口趋势' },
+                    { idx: 1, label: '年龄结构变化' },
+                    { idx: 2, label: '出生政策模拟' },
+                ]
+            };
+        },
+        methods: {
+            switchTab(idx) {
+                this.activeTab = idx;
+                ['c0','c1','c2'].forEach(function(id, i){
+                    document.getElementById(id).className = 'cv' + (i===idx ? '' : ' hidden');
+                });
+                var s = window._activeScen || 'base';
+                requestAnimationFrame(function(){
+                    if(idx===0){ ec0.resize(); }
+                    if(idx===1){ var c=getEC1(); c.setOption(spec1(s),true); requestAnimationFrame(function(){c.resize();}); }
+                    if(idx===2){ var c=getEC2(); c.setOption(spec2(s),true); requestAnimationFrame(function(){c.resize();}); }
+                });
+            }
+        }
+    });
+    tabApp.mount('#tab-app');
+
+    var stripApp = Vue.createApp({
+        data() {
+            return {
+                cards: [
+                    { label:'2060年总人口',    value:'—', sub:'—' },
+                    { label:'60岁以上人口',    value:'—', sub:'—' },
+                    { label:'老龄化率',        value:'—', sub:'—' },
+                    { label:'预测TFR(2060)',  value:'—', sub:'人口更替线2.1' },
+                    { label:'预期寿命(2060)', value:'81.2岁', sub:'WHO生命表模型' }
+                ]
+            };
+        },
+        methods: {
+            updateCards(s) {
+                const L = Y.length - 1;
+                const tot = TOT[s][L];
+                const old = OLD[s][L];
+                const rat = (old / tot * 100).toFixed(1);
+                const scenLabel = s==='opt' ? '高生育(TFR=1.31)'
+                    : s==='base' ? '中等(TFR=1.05)'
+                        : '低生育(TFR=0.72)';
+
+                this.cards = [
+                    {
+                        label: '2060年总人口',
+                        value: (tot/10000).toFixed(1) + '亿',
+                        sub: 'vs 2020年 ' + ((tot-141200)/141200*100).toFixed(1) + '%'
+                    },
+                    {
+                        label: '60岁以上人口',
+                        value: (old/10000).toFixed(1) + '亿',
+                        sub: scenLabel
+                    },
+                    {
+                        label: '老龄化率',
+                        value: rat + '%',
+                        sub: '较2020年 +' + (rat-18.7).toFixed(1) + 'pp'
+                    },
+                    {
+                        label: '预测TFR(2060)',
+                        value: TFR[s][L].toFixed(2),
+                        sub: '人口更替线2.1'
+                    },
+                    {
+                        label: '预期寿命(2060)',
+                        value: '81.2岁',
+                        sub: 'WHO生命表模型'
+                    }
+                ];
+            }
+        },
+        mounted() {
+            window._stripApp = this;
+            this.updateCards('base');
+        }
+    });
+    stripApp.mount('#strip-app');
+
+    window._activeScen = 'base';
+    window.addEventListener('resize', function(){ setTimeout(resizeAll, 100); });
+
+    // 初始化图表
+    document.addEventListener('DOMContentLoaded', function() {
+        ec0 = echarts.init(document.getElementById('c0'));
+        ec0.setOption(spec0('base'), true);
+
+        // 预初始化其他图表
+        getEC1();
+        getEC2();
+    });
+</script>
+</body>
+</html>

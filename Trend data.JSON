@@ -1,0 +1,64 @@
+{
+  "source": "世界银行开放数据 / World Bank Open Data",
+  "indicator_codes": {
+    "tfr": "SP.DYN.TFRT.IN",
+    "life_expectancy": "SP.DYN.LE00.IN",
+    "old65_pct": "SP.POP.65UP.TO.ZS"
+  },
+  "data": [
+    {
+      "year": 2000,
+      "tfr": 1.81,
+      "life_expectancy": 71.7,
+      "old65_pct": null
+    },
+    {
+      "year": 2005,
+      "tfr": 1.64,
+      "life_expectancy": 73.2,
+      "old65_pct": null
+    },
+    {
+      "year": 2010,
+      "tfr": 1.56,
+      "life_expectancy": 74.9,
+      "old65_pct": null
+    },
+    {
+      "year": 2015,
+      "tfr": 1.6,
+      "life_expectancy": 76.3,
+      "old65_pct": null
+    },
+    {
+      "year": 2018,
+      "tfr": 1.49,
+      "life_expectancy": 76.9,
+      "old65_pct": null
+    },
+    {
+      "year": 2019,
+      "tfr": 1.47,
+      "life_expectancy": 77.3,
+      "old65_pct": null
+    },
+    {
+      "year": 2020,
+      "tfr": 1.28,
+      "life_expectancy": 77.8,
+      "old65_pct": null
+    },
+    {
+      "year": 2021,
+      "tfr": 1.16,
+      "life_expectancy": 78.2,
+      "old65_pct": null
+    },
+    {
+      "year": 2022,
+      "tfr": 1.09,
+      "life_expectancy": null,
+      "old65_pct": null
+    }
+  ]
+}
